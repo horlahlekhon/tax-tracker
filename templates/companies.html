@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Companies - Nigerian LLC Tax Tracker{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Page Header -->
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold text-white">Manage Companies</h1>
+            <p class="text-green-200">Add, edit, or remove your companies</p>
+        </div>
+        <button onclick="openAddCompanyModal()"
+                class="bg-white text-primary-600 hover:bg-gray-100 px-4 py-2 rounded-lg transition-colors flex items-center space-x-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            <span>Add Company</span>
+        </button>
+    </div>
+
+    <!-- Companies List -->
+    {% if companies %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for comp in companies %}
+                <div class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex items-center space-x-3">
+                            <div class="p-2 bg-primary-100 rounded-lg">
+                                <svg class="w-6 h-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-gray-800">{{ comp.name }}</h3>
+                                <p class="text-sm text-gray-500">TIN: {{ comp.tin }}</p>
+                            </div>
+                        </div>
+                        <div class="flex space-x-1">
+                            <button onclick="openEditCompanyModal('{{ comp.id }}', '{{ comp.name }}', '{{ comp.tin }}', '{{ comp.registration_date }}')"
+                                    class="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                                    title="Edit">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                </svg>
+                            </button>
+                            <button onclick="confirmDeleteCompany('{{ comp.id }}', '{{ comp.name }}')"
+                                    class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                    title="Delete">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex items-center text-gray-600">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                            </svg>
+                            Registered: {{ comp.registration_date }}
+                        </div>
+                    </div>
+                    <div class="mt-4 pt-4 border-t border-gray-100">
+                        <a href="/?company_id={{ comp.id }}"
+                           class="inline-flex items-center text-primary-600 hover:text-primary-700 font-medium text-sm">
+                            View Dashboard
+                            <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <!-- Empty State -->
+        <div class="bg-white rounded-xl shadow-lg p-12 text-center">
+            <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+            </svg>
+            <h2 class="text-xl font-bold text-gray-800 mb-2">No Companies Yet</h2>
+            <p class="text-gray-600 mb-6">Get started by adding your first company to track taxes.</p>
+            <button onclick="openAddCompanyModal()"
+                    class="inline-flex items-center px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                Add Your First Company
+            </button>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Edit Company Modal -->
+<div id="edit-company-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-xl font-bold text-gray-800">Edit Company</h2>
+            <button onclick="closeEditCompanyModal()" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        <form id="edit-company-form" onsubmit="submitEditCompany(event)">
+            <input type="hidden" id="edit-company-id" name="id">
+            <div class="space-y-4">
+                <div>
+                    <label for="edit-company-name" class="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
+                    <input type="text" id="edit-company-name" name="name" required
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                </div>
+                <div>
+                    <label for="edit-company-tin" class="block text-sm font-medium text-gray-700 mb-1">TIN (Tax Identification Number)</label>
+                    <input type="text" id="edit-company-tin" name="tin" required
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                </div>
+                <div>
+                    <label for="edit-company-reg-date" class="block text-sm font-medium text-gray-700 mb-1">Registration Date</label>
+                    <input type="date" id="edit-company-reg-date" name="registration_date" required
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                </div>
+            </div>
+            <div class="mt-6 flex space-x-3">
+                <button type="button" onclick="closeEditCompanyModal()"
+                        class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+                    Cancel
+                </button>
+                <button type="submit"
+                        class="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+                    Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="delete-company-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 p-6">
+        <div class="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full mb-4">
+            <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            </svg>
+        </div>
+        <h2 class="text-xl font-bold text-gray-800 text-center mb-2">Delete Company?</h2>
+        <p class="text-gray-600 text-center mb-6">
+            Are you sure you want to delete <span id="delete-company-name" class="font-semibold"></span>?
+            This will also delete all associated transactions and cannot be undone.
+        </p>
+        <input type="hidden" id="delete-company-id">
+        <div class="flex space-x-3">
+            <button onclick="closeDeleteCompanyModal()"
+                    class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+                Cancel
+            </button>
+            <button onclick="deleteCompany()"
+                    class="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                Delete
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function openEditCompanyModal(id, name, tin, regDate) {
+        document.getElementById('edit-company-id').value = id;
+        document.getElementById('edit-company-name').value = name;
+        document.getElementById('edit-company-tin').value = tin;
+        document.getElementById('edit-company-reg-date').value = regDate;
+
+        const modal = document.getElementById('edit-company-modal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+
+    function closeEditCompanyModal() {
+        const modal = document.getElementById('edit-company-modal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.getElementById('edit-company-form').reset();
+    }
+
+    async function submitEditCompany(event) {
+        event.preventDefault();
+        const form = event.target;
+        const companyId = document.getElementById('edit-company-id').value;
+        const data = {
+            name: document.getElementById('edit-company-name').value,
+            tin: document.getElementById('edit-company-tin').value,
+            registration_date: document.getElementById('edit-company-reg-date').value,
+        };
+
+        try {
+            const response = await fetch(`/companies/${companyId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            });
+
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                const error = await response.json();
+                alert('Error: ' + (error.detail || 'Failed to update company'));
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+
+    function confirmDeleteCompany(id, name) {
+        document.getElementById('delete-company-id').value = id;
+        document.getElementById('delete-company-name').textContent = name;
+
+        const modal = document.getElementById('delete-company-modal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+
+    function closeDeleteCompanyModal() {
+        const modal = document.getElementById('delete-company-modal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+    async function deleteCompany() {
+        const companyId = document.getElementById('delete-company-id').value;
+
+        try {
+            const response = await fetch(`/companies/${companyId}`, {
+                method: 'DELETE',
+            });
+
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                const error = await response.json();
+                alert('Error: ' + (error.detail || 'Failed to delete company'));
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+
+    // Close modals on escape key
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closeEditCompanyModal();
+            closeDeleteCompanyModal();
+        }
+    });
+
+    // Close modals on backdrop click
+    document.getElementById('edit-company-modal').addEventListener('click', function(event) {
+        if (event.target === this) {
+            closeEditCompanyModal();
+        }
+    });
+    document.getElementById('delete-company-modal').addEventListener('click', function(event) {
+        if (event.target === this) {
+            closeDeleteCompanyModal();
+        }
+    });
+</script>
+{% endblock %}

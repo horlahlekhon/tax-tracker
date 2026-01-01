@@ -1,0 +1,850 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Nigerian LLC Tax Tracker{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Page Header -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-white">Dashboard</h1>
+            {% if company %}
+                <p class="text-green-200">{{ company.name }} - TIN: {{ company.tin }}</p>
+            {% else %}
+                <p class="text-green-200">Select a company to view tax summary</p>
+            {% endif %}
+        </div>
+        {% if company %}
+            <div class="flex items-center space-x-3">
+                <!-- Month Navigation -->
+                <div class="flex items-center gap-1">
+                    <button onclick="navigateMonth(-1)"
+                            class="bg-white border border-gray-300 rounded-lg p-2 text-gray-600 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            title="Previous month">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                        </svg>
+                    </button>
+                    <input type="month" id="month-filter" value="{{ selected_month }}"
+                           onchange="updateFilters()"
+                           class="bg-white border border-gray-300 rounded-lg py-2 px-4 text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500">
+                    <button onclick="navigateMonth(1)"
+                            class="bg-white border border-gray-300 rounded-lg p-2 text-gray-600 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            title="Next month">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </button>
+                </div>
+                <select id="period-filter" onchange="updateFilters()"
+                        class="bg-white border border-gray-300 rounded-lg py-2 px-4 text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500">
+                    <option value="month" {{ 'selected' if selected_period == 'month' else '' }}>Selected Month</option>
+                    <option value="ytd" {{ 'selected' if selected_period == 'ytd' else '' }}>Year to Date ({{ selected_month[:4] }})</option>
+                </select>
+            </div>
+        {% endif %}
+    </div>
+
+    {% if company and summary %}
+        <!-- Tax Summary Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Total Revenue Card -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500 uppercase tracking-wide">Total Revenue</p>
+                        <p class="text-3xl font-bold text-gray-800">₦{{ "{:,.2f}".format(summary.total_revenue|float) }}</p>
+                    </div>
+                    <div class="p-3 bg-green-100 rounded-full">
+                        <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    {% set size = summary.company_size.value if summary.company_size else 'Small' %}
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ 'bg-green-100 text-green-800' if size == 'Small' else ('bg-yellow-100 text-yellow-800' if size == 'Medium' else 'bg-red-100 text-red-800') }}">
+                        {{ size }} Company
+                    </span>
+                </div>
+            </div>
+
+            <!-- Deductible Expenses Card -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500 uppercase tracking-wide">Deductible Expenses</p>
+                        <p class="text-3xl font-bold text-gray-800">₦{{ "{:,.2f}".format(summary.deductible_expenses|float) }}</p>
+                    </div>
+                    <div class="p-3 bg-red-100 rounded-full">
+                        <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Taxable Profit Card -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500 uppercase tracking-wide">Taxable Profit</p>
+                        <p class="text-3xl font-bold text-gray-800">₦{{ "{:,.2f}".format(summary.taxable_profit|float) }}</p>
+                    </div>
+                    <div class="p-3 bg-blue-100 rounded-full">
+                        <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CIT Tax Owed Card -->
+            <div class="bg-white rounded-xl shadow-lg p-6 border-2 border-primary-500">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500 uppercase tracking-wide">CIT Tax Owed</p>
+                        <p class="text-3xl font-bold text-primary-600">₦{{ "{:,.2f}".format(summary.cit_amount|float) }}</p>
+                    </div>
+                    <div class="p-3 bg-primary-100 rounded-full">
+                        <svg class="w-6 h-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+                <p class="mt-2 text-sm text-gray-500">Rate: {{ summary.cit_rate }}%</p>
+            </div>
+
+            <!-- VAT Status Card -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500 uppercase tracking-wide">VAT Status</p>
+                        <p class="text-xl font-bold {{ 'text-yellow-600' if summary.vat_required else 'text-gray-600' }}">
+                            {{ 'Required' if summary.vat_required else 'Not Required' }}
+                        </p>
+                    </div>
+                    <div class="p-3 {{ 'bg-yellow-100' if summary.vat_required else 'bg-gray-100' }} rounded-full">
+                        <svg class="w-6 h-6 {{ 'text-yellow-600' if summary.vat_required else 'text-gray-600' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+                {% if summary.vat_required %}
+                    <p class="mt-2 text-sm text-gray-500">VAT Payable: ₦{{ "{:,.2f}".format(summary.vat_amount|float) }}</p>
+                {% else %}
+                    <p class="mt-2 text-sm text-gray-500">Threshold: ₦25,000,000</p>
+                {% endif %}
+            </div>
+
+            <!-- Net Profit Card -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500 uppercase tracking-wide">Net Profit After Tax</p>
+                        <p class="text-3xl font-bold text-gray-800">₦{{ "{:,.2f}".format(summary.net_profit|float) }}</p>
+                    </div>
+                    <div class="p-3 bg-purple-100 rounded-full">
+                        <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Expense Breakdown & Insights -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Expense Breakdown -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h2 class="text-lg font-bold text-gray-800 mb-4">Expense Breakdown</h2>
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-600">Direct Expenses</span>
+                        <span class="font-semibold text-gray-800">₦{{ "{:,.2f}".format(summary.direct_expenses|float) }}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-600">Operating Expenses</span>
+                        <span class="font-semibold text-gray-800">₦{{ "{:,.2f}".format(summary.operating_expenses|float) }}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-600">Capital Expenses</span>
+                        <span class="font-semibold text-gray-800">₦{{ "{:,.2f}".format(summary.capital_expenses|float) }}</span>
+                    </div>
+                    <hr class="border-gray-200">
+                    <div class="flex justify-between items-center text-red-600">
+                        <span>Non-Deductible</span>
+                        <span class="font-semibold">₦{{ "{:,.2f}".format(summary.non_deductible_expenses|float) }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Threshold Alerts -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h2 class="text-lg font-bold text-gray-800 mb-4">Threshold Progress (YTD)</h2>
+                <div class="space-y-6">
+                    <!-- VAT Threshold -->
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-gray-600">VAT Threshold (₦25M)</span>
+                            <span class="text-sm text-gray-500">{{ summary.vat_threshold_percent }}%</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-3">
+                            <div class="bg-yellow-500 h-3 rounded-full transition-all duration-500" style="width: {{ [summary.vat_threshold_percent, 100]|min }}%"></div>
+                        </div>
+                        {% if summary.vat_threshold_percent >= 80 and not summary.vat_required %}
+                            <p class="text-xs text-yellow-600 mt-1">Approaching VAT registration threshold</p>
+                        {% endif %}
+                    </div>
+                    <!-- Small Company Threshold -->
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-gray-600">Small Company Limit (₦50M)</span>
+                            <span class="text-sm text-gray-500">{{ summary.small_company_threshold_percent }}%</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-3">
+                            <div class="bg-green-500 h-3 rounded-full transition-all duration-500" style="width: {{ [summary.small_company_threshold_percent, 100]|min }}%"></div>
+                        </div>
+                        {% if summary.small_company_threshold_percent >= 80 and summary.company_size.value == 'Small' %}
+                            <p class="text-xs text-yellow-600 mt-1">Approaching 20% CIT bracket</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Monthly Filing Checklist -->
+        <div class="bg-white rounded-xl shadow-lg p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-bold text-gray-800">Monthly Filing Checklist</h2>
+                <span class="text-sm text-gray-500">{{ selected_month }}</span>
+            </div>
+            <div class="space-y-4" id="filing-checklist">
+                <!-- VAT Return -->
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div class="flex items-center space-x-3">
+                        <input type="checkbox" id="checklist-vat"
+                               class="h-5 w-5 text-primary-600 focus:ring-primary-500 border-gray-300 rounded cursor-pointer"
+                               onchange="updateChecklist('vat_filed', this.checked)">
+                        <div>
+                            <label for="checklist-vat" class="font-medium text-gray-800 cursor-pointer">VAT Return Filed</label>
+                            <p class="text-xs text-gray-500">Monthly VAT return submission</p>
+                        </div>
+                    </div>
+                    <span id="vat-status" class="text-xs px-2 py-1 rounded-full bg-gray-200 text-gray-600">Pending</span>
+                </div>
+
+                <!-- PAYE -->
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div class="flex items-center space-x-3">
+                        <input type="checkbox" id="checklist-paye"
+                               class="h-5 w-5 text-primary-600 focus:ring-primary-500 border-gray-300 rounded cursor-pointer"
+                               onchange="updateChecklist('paye_remitted', this.checked)">
+                        <div>
+                            <label for="checklist-paye" class="font-medium text-gray-800 cursor-pointer">PAYE Remitted</label>
+                            <p class="text-xs text-gray-500">Pay-As-You-Earn tax remittance</p>
+                        </div>
+                    </div>
+                    <span id="paye-status" class="text-xs px-2 py-1 rounded-full bg-gray-200 text-gray-600">Pending</span>
+                </div>
+
+                <!-- WHT -->
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div class="flex items-center space-x-3">
+                        <input type="checkbox" id="checklist-wht"
+                               class="h-5 w-5 text-primary-600 focus:ring-primary-500 border-gray-300 rounded cursor-pointer"
+                               onchange="updateChecklist('wht_remitted', this.checked)">
+                        <div>
+                            <label for="checklist-wht" class="font-medium text-gray-800 cursor-pointer">WHT Remitted</label>
+                            <p class="text-xs text-gray-500">Withholding Tax remittance</p>
+                        </div>
+                    </div>
+                    <span id="wht-status" class="text-xs px-2 py-1 rounded-full bg-gray-200 text-gray-600">Pending</span>
+                </div>
+            </div>
+            <div class="mt-4 pt-4 border-t border-gray-200">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-600">Compliance Score</span>
+                    <span id="compliance-score" class="text-lg font-bold text-gray-800">0/3</span>
+                </div>
+                <div class="mt-2 w-full bg-gray-200 rounded-full h-2">
+                    <div id="compliance-bar" class="bg-primary-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Receipt Audit Score -->
+        <div class="bg-white rounded-xl shadow-lg p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-lg font-bold text-gray-800">Audit Readiness</h2>
+                    <p class="text-gray-600">{{ summary.receipt_percentage }}% of transactions have receipts</p>
+                </div>
+                <div class="text-3xl font-bold {{ 'text-green-600' if summary.receipt_percentage >= 80 else ('text-yellow-600' if summary.receipt_percentage >= 50 else 'text-red-600') }}">
+                    {{ summary.receipt_percentage }}%
+                </div>
+            </div>
+            <div class="mt-4 w-full bg-gray-200 rounded-full h-3">
+                <div class="h-3 rounded-full transition-all duration-500 {{ 'bg-green-500' if summary.receipt_percentage >= 80 else ('bg-yellow-500' if summary.receipt_percentage >= 50 else 'bg-red-500') }}" style="width: {{ summary.receipt_percentage }}%"></div>
+            </div>
+        </div>
+
+        <!-- Vendor/Client Insights -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Top Vendors -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h2 class="text-lg font-bold text-gray-800 mb-4">Top Vendors <span class="text-gray-500 font-normal text-sm">({{ selected_month }})</span></h2>
+                <div id="top-vendors" class="space-y-3">
+                    <p class="text-gray-500 text-sm">Loading...</p>
+                </div>
+            </div>
+
+            <!-- Top Clients -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h2 class="text-lg font-bold text-gray-800 mb-4">Top Clients <span class="text-gray-500 font-normal text-sm">({{ selected_month }})</span></h2>
+                <div id="top-clients" class="space-y-3">
+                    <p class="text-gray-500 text-sm">Loading...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="flex flex-wrap gap-3">
+            <a href="/transactions?company_id={{ company.id }}&month={{ selected_month }}"
+               class="inline-flex items-center px-4 py-2 bg-white text-gray-700 rounded-lg hover:bg-gray-100 transition-colors shadow">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                </svg>
+                View Transactions
+            </a>
+            <a href="/calculator?company_id={{ company.id }}"
+               class="inline-flex items-center px-4 py-2 bg-white text-gray-700 rounded-lg hover:bg-gray-100 transition-colors shadow">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                </svg>
+                Salary/Dividend Calculator
+            </a>
+            <a href="/reports/balance-sheet/pdf?company_id={{ company.id }}&month={{ selected_month }}"
+               class="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                Download Balance Sheet PDF
+            </a>
+        </div>
+
+        <!-- Export Options -->
+        <div class="bg-white rounded-xl shadow-lg p-6">
+            <h2 class="text-lg font-bold text-gray-800 mb-4">Export Reports</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- Transaction Export -->
+                <div class="border border-gray-200 rounded-lg p-4">
+                    <div class="flex items-center mb-3">
+                        <div class="p-2 bg-blue-100 rounded-lg mr-3">
+                            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-gray-800">Transactions</h3>
+                            <p class="text-xs text-gray-500">All transactions with details</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <a href="/reports/export/transactions?company_id={{ company.id }}&month={{ selected_month }}"
+                           class="flex-1 text-center px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors">
+                            {{ selected_month }}
+                        </a>
+                        <a href="/reports/export/transactions?company_id={{ company.id }}&year={{ selected_month[:4] }}"
+                           class="flex-1 text-center px-3 py-2 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors">
+                            Full {{ selected_month[:4] }}
+                        </a>
+                    </div>
+                </div>
+
+                <!-- VAT Summary Export -->
+                <div class="border border-gray-200 rounded-lg p-4">
+                    <div class="flex items-center mb-3">
+                        <div class="p-2 bg-yellow-100 rounded-lg mr-3">
+                            <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-gray-800">VAT Summary</h3>
+                            <p class="text-xs text-gray-500">Monthly VAT breakdown</p>
+                        </div>
+                    </div>
+                    <a href="/reports/export/vat?company_id={{ company.id }}&year={{ selected_month[:4] }}"
+                       class="block text-center px-3 py-2 text-sm bg-yellow-100 text-yellow-700 rounded hover:bg-yellow-200 transition-colors">
+                        Download {{ selected_month[:4] }} VAT Report
+                    </a>
+                </div>
+
+                <!-- CIT Summary Export -->
+                <div class="border border-gray-200 rounded-lg p-4">
+                    <div class="flex items-center mb-3">
+                        <div class="p-2 bg-green-100 rounded-lg mr-3">
+                            <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-gray-800">CIT Summary</h3>
+                            <p class="text-xs text-gray-500">Annual tax calculation</p>
+                        </div>
+                    </div>
+                    <a href="/reports/export/cit?company_id={{ company.id }}&year={{ selected_month[:4] }}"
+                       class="block text-center px-3 py-2 text-sm bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors">
+                        Download {{ selected_month[:4] }} CIT Report
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Google Drive Integration -->
+        <div class="bg-white rounded-xl shadow-lg p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center">
+                    <div class="p-2 bg-blue-100 rounded-lg mr-3">
+                        <svg class="w-6 h-6 text-blue-600" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-bold text-gray-800">Google Drive</h2>
+                        <p id="gdrive-status-text" class="text-sm text-gray-500">Checking status...</p>
+                    </div>
+                </div>
+                <div id="gdrive-status-badge" class="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600">
+                    Loading...
+                </div>
+            </div>
+
+            <div id="gdrive-not-configured" class="hidden">
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <p class="text-yellow-800 text-sm">
+                        Google Drive integration requires setup. Add a <code class="bg-yellow-100 px-1 rounded">credentials.json</code> file from Google Cloud Console to the <code class="bg-yellow-100 px-1 rounded">data/</code> directory.
+                    </p>
+                </div>
+            </div>
+
+            <div id="gdrive-not-connected" class="hidden">
+                <p class="text-gray-600 text-sm mb-4">Connect your Google Drive to upload balance sheets directly.</p>
+                <button onclick="connectGoogleDrive()"
+                        class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+                    </svg>
+                    Connect Google Drive
+                </button>
+            </div>
+
+            <div id="gdrive-connected" class="hidden">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center text-green-600">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        <span id="gdrive-user-email" class="text-sm"></span>
+                    </div>
+                    <button onclick="disconnectGoogleDrive()"
+                            class="text-sm text-red-600 hover:text-red-700">
+                        Disconnect
+                    </button>
+                </div>
+
+                <div class="border border-gray-200 rounded-lg p-4">
+                    <h3 class="font-semibold text-gray-800 mb-3">Upload Balance Sheet to Drive</h3>
+                    <div class="flex items-center gap-3">
+                        <button onclick="uploadToDrive()"
+                                id="gdrive-upload-btn"
+                                class="flex-1 inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                            </svg>
+                            <span id="upload-btn-text">Upload {{ selected_month }} Balance Sheet</span>
+                        </button>
+                    </div>
+                    <div id="gdrive-upload-result" class="hidden mt-3 p-3 rounded-lg">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    {% elif company %}
+        <!-- No Transactions -->
+        <div class="bg-white rounded-xl shadow-lg p-12 text-center">
+            <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+            </svg>
+            <h2 class="text-xl font-bold text-gray-800 mb-2">No Transactions Yet</h2>
+            <p class="text-gray-600 mb-6">Add transactions to see your tax summary.</p>
+            <a href="/transactions?company_id={{ company.id }}"
+               class="inline-flex items-center px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                Add Transactions
+            </a>
+        </div>
+
+    {% else %}
+        <!-- No Company Selected -->
+        <div class="bg-white rounded-xl shadow-lg p-12 text-center">
+            <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+            </svg>
+            <h2 class="text-xl font-bold text-gray-800 mb-2">No Company Selected</h2>
+            <p class="text-gray-600 mb-6">Add a company or select one from the dropdown to view your tax summary.</p>
+            <button onclick="openAddCompanyModal()"
+                    class="inline-flex items-center px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                Add Your First Company
+            </button>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const companyId = '{{ company.id if company else "" }}';
+    const selectedMonth = '{{ selected_month }}';
+
+    function updateFilters() {
+        const month = document.getElementById('month-filter').value;
+        const period = document.getElementById('period-filter').value;
+        const url = new URL(window.location.href);
+        url.searchParams.set('month', month);
+        url.searchParams.set('period', period);
+        window.location.href = url.toString();
+    }
+
+    function navigateMonth(direction) {
+        const monthInput = document.getElementById('month-filter');
+        const [year, month] = monthInput.value.split('-').map(Number);
+
+        let newMonth = month + direction;
+        let newYear = year;
+
+        if (newMonth < 1) {
+            newMonth = 12;
+            newYear -= 1;
+        } else if (newMonth > 12) {
+            newMonth = 1;
+            newYear += 1;
+        }
+
+        const newValue = `${newYear}-${String(newMonth).padStart(2, '0')}`;
+        monthInput.value = newValue;
+        updateFilters();
+    }
+
+    function formatCurrency(amount) {
+        return '₦' + parseFloat(amount).toLocaleString('en-NG', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+    }
+
+    function renderVendorClientList(containerId, items, isVendor) {
+        const container = document.getElementById(containerId);
+
+        if (!items || items.length === 0) {
+            container.innerHTML = '<p class="text-gray-400 text-sm">No data available</p>';
+            return;
+        }
+
+        const html = items.map((item, index) => `
+            <div class="flex items-center justify-between py-2 ${index < items.length - 1 ? 'border-b border-gray-100' : ''}">
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 rounded-full ${isVendor ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'} flex items-center justify-center text-sm font-medium">
+                        ${index + 1}
+                    </div>
+                    <div>
+                        <p class="font-medium text-gray-800">${item.name}</p>
+                        <p class="text-xs text-gray-500">${item.transaction_count} transaction(s)</p>
+                    </div>
+                </div>
+                <span class="font-semibold ${isVendor ? 'text-red-600' : 'text-green-600'}">
+                    ${formatCurrency(item.total_amount)}
+                </span>
+            </div>
+        `).join('');
+
+        container.innerHTML = html;
+    }
+
+    async function loadInsights() {
+        if (!companyId) return;
+
+        try {
+            const response = await fetch(`/reports/insights?company_id=${companyId}&month=${selectedMonth}`);
+            if (response.ok) {
+                const data = await response.json();
+                renderVendorClientList('top-vendors', data.top_vendors, true);
+                renderVendorClientList('top-clients', data.top_clients, false);
+            } else {
+                document.getElementById('top-vendors').innerHTML = '<p class="text-gray-400 text-sm">Failed to load</p>';
+                document.getElementById('top-clients').innerHTML = '<p class="text-gray-400 text-sm">Failed to load</p>';
+            }
+        } catch (error) {
+            console.error('Failed to load insights:', error);
+            document.getElementById('top-vendors').innerHTML = '<p class="text-gray-400 text-sm">Failed to load</p>';
+            document.getElementById('top-clients').innerHTML = '<p class="text-gray-400 text-sm">Failed to load</p>';
+        }
+    }
+
+    // Filing Checklist Functions
+    function updateChecklistUI(data) {
+        // Update checkboxes
+        document.getElementById('checklist-vat').checked = data.vat_filed;
+        document.getElementById('checklist-paye').checked = data.paye_remitted;
+        document.getElementById('checklist-wht').checked = data.wht_remitted;
+
+        // Update status badges
+        updateStatusBadge('vat-status', data.vat_filed);
+        updateStatusBadge('paye-status', data.paye_remitted);
+        updateStatusBadge('wht-status', data.wht_remitted);
+
+        // Update compliance score
+        const completed = [data.vat_filed, data.paye_remitted, data.wht_remitted].filter(Boolean).length;
+        document.getElementById('compliance-score').textContent = `${completed}/3`;
+        document.getElementById('compliance-bar').style.width = `${(completed / 3) * 100}%`;
+    }
+
+    function updateStatusBadge(elementId, isComplete) {
+        const badge = document.getElementById(elementId);
+        if (isComplete) {
+            badge.textContent = 'Complete';
+            badge.className = 'text-xs px-2 py-1 rounded-full bg-green-100 text-green-700';
+        } else {
+            badge.textContent = 'Pending';
+            badge.className = 'text-xs px-2 py-1 rounded-full bg-gray-200 text-gray-600';
+        }
+    }
+
+    async function loadChecklist() {
+        if (!companyId) return;
+
+        try {
+            const response = await fetch(`/reports/checklist?company_id=${companyId}&month=${selectedMonth}`);
+            if (response.ok) {
+                const data = await response.json();
+                updateChecklistUI(data);
+            }
+        } catch (error) {
+            console.error('Failed to load checklist:', error);
+        }
+    }
+
+    async function updateChecklist(field, value) {
+        if (!companyId) return;
+
+        try {
+            const response = await fetch(`/reports/checklist?company_id=${companyId}&month=${selectedMonth}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ [field]: value }),
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                updateChecklistUI(data);
+            } else {
+                // Revert checkbox on error
+                const checkbox = document.getElementById(`checklist-${field.replace('_', '-').replace('_filed', '').replace('_remitted', '')}`);
+                if (checkbox) checkbox.checked = !value;
+                alert('Failed to update checklist');
+            }
+        } catch (error) {
+            console.error('Failed to update checklist:', error);
+            alert('Failed to update checklist');
+        }
+    }
+
+    // Load data on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        loadInsights();
+        loadChecklist();
+        loadGDriveStatus();
+        checkGDriveUrlParams();
+    });
+
+    // Google Drive Functions
+    async function loadGDriveStatus() {
+        try {
+            const response = await fetch('/gdrive/status');
+            if (response.ok) {
+                const data = await response.json();
+                updateGDriveUI(data);
+            }
+        } catch (error) {
+            console.error('Failed to load Google Drive status:', error);
+            document.getElementById('gdrive-status-text').textContent = 'Error loading status';
+        }
+    }
+
+    function updateGDriveUI(status) {
+        const statusText = document.getElementById('gdrive-status-text');
+        const statusBadge = document.getElementById('gdrive-status-badge');
+        const notConfigured = document.getElementById('gdrive-not-configured');
+        const notConnected = document.getElementById('gdrive-not-connected');
+        const connected = document.getElementById('gdrive-connected');
+
+        // Hide all states first
+        notConfigured.classList.add('hidden');
+        notConnected.classList.add('hidden');
+        connected.classList.add('hidden');
+
+        if (!status.configured) {
+            statusText.textContent = 'Not configured';
+            statusBadge.textContent = 'Setup Required';
+            statusBadge.className = 'px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-700';
+            notConfigured.classList.remove('hidden');
+        } else if (!status.authenticated) {
+            statusText.textContent = 'Not connected';
+            statusBadge.textContent = 'Disconnected';
+            statusBadge.className = 'px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600';
+            notConnected.classList.remove('hidden');
+        } else {
+            statusText.textContent = 'Connected';
+            statusBadge.textContent = 'Connected';
+            statusBadge.className = 'px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-700';
+            connected.classList.remove('hidden');
+            if (status.user_email) {
+                document.getElementById('gdrive-user-email').textContent = status.user_email;
+            }
+        }
+    }
+
+    async function connectGoogleDrive() {
+        try {
+            const response = await fetch('/gdrive/auth/url');
+            if (response.ok) {
+                const data = await response.json();
+                window.location.href = data.authorization_url;
+            } else {
+                alert('Failed to get authorization URL');
+            }
+        } catch (error) {
+            console.error('Failed to connect Google Drive:', error);
+            alert('Failed to connect Google Drive');
+        }
+    }
+
+    async function disconnectGoogleDrive() {
+        if (!confirm('Are you sure you want to disconnect Google Drive?')) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/gdrive/disconnect', { method: 'POST' });
+            if (response.ok) {
+                loadGDriveStatus();
+            } else {
+                alert('Failed to disconnect');
+            }
+        } catch (error) {
+            console.error('Failed to disconnect Google Drive:', error);
+            alert('Failed to disconnect Google Drive');
+        }
+    }
+
+    async function uploadToDrive() {
+        const btn = document.getElementById('gdrive-upload-btn');
+        const btnText = document.getElementById('upload-btn-text');
+        const resultDiv = document.getElementById('gdrive-upload-result');
+
+        // Show loading state
+        btn.disabled = true;
+        btnText.textContent = 'Uploading...';
+        resultDiv.classList.add('hidden');
+
+        try {
+            const response = await fetch(`/gdrive/upload/balance-sheet?company_id=${companyId}&month=${selectedMonth}`, {
+                method: 'POST',
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                resultDiv.className = 'mt-3 p-3 rounded-lg bg-green-50 border border-green-200';
+                resultDiv.innerHTML = `
+                    <div class="flex items-center text-green-700 mb-2">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        <span class="font-medium">Uploaded successfully!</span>
+                    </div>
+                    <a href="${data.web_view_link}" target="_blank" class="text-blue-600 hover:underline text-sm">
+                        Open in Google Drive
+                    </a>
+                `;
+            } else {
+                resultDiv.className = 'mt-3 p-3 rounded-lg bg-red-50 border border-red-200';
+                resultDiv.innerHTML = `
+                    <div class="flex items-center text-red-700">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                        <span>${data.error || 'Upload failed'}</span>
+                    </div>
+                `;
+            }
+
+            resultDiv.classList.remove('hidden');
+
+        } catch (error) {
+            console.error('Upload failed:', error);
+            resultDiv.className = 'mt-3 p-3 rounded-lg bg-red-50 border border-red-200';
+            resultDiv.innerHTML = `
+                <div class="flex items-center text-red-700">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                    <span>Upload failed. Please try again.</span>
+                </div>
+            `;
+            resultDiv.classList.remove('hidden');
+        } finally {
+            btn.disabled = false;
+            btnText.textContent = `Upload ${selectedMonth} Balance Sheet`;
+        }
+    }
+
+    function checkGDriveUrlParams() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const success = urlParams.get('gdrive_success');
+        const error = urlParams.get('gdrive_error');
+
+        if (success === 'connected') {
+            // Show success notification
+            showNotification('Google Drive connected successfully!', 'success');
+            // Clean URL
+            window.history.replaceState({}, document.title, window.location.pathname + window.location.search.replace(/[?&]gdrive_success=[^&]+/, '').replace(/^\?$/, ''));
+        }
+
+        if (error) {
+            showNotification(`Google Drive error: ${error}`, 'error');
+            window.history.replaceState({}, document.title, window.location.pathname + window.location.search.replace(/[?&]gdrive_error=[^&]+/, '').replace(/^\?$/, ''));
+        }
+    }
+
+    function showNotification(message, type) {
+        const notification = document.createElement('div');
+        notification.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 ${
+            type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+        }`;
+        notification.textContent = message;
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+            notification.remove();
+        }, 5000);
+    }
+</script>
+{% endblock %}

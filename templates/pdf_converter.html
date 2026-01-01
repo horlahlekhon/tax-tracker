@@ -1,0 +1,295 @@
+{% extends "base.html" %}
+
+{% block title %}PDF to CSV Converter - Nigerian LLC Tax Tracker{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Page Header -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-white">PDF to CSV Converter</h1>
+            <p class="text-green-200">Convert your bank statement PDF to CSV format</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Upload Section -->
+        <div class="bg-white rounded-xl shadow-lg p-6">
+            <h2 class="text-lg font-bold text-gray-800 mb-4">Upload Bank Statement</h2>
+
+            <form id="upload-form" onsubmit="convertPdf(event)" enctype="multipart/form-data">
+                <!-- Bank Selection -->
+                <div class="mb-4">
+                    <label for="bank-select" class="block text-sm font-medium text-gray-700 mb-2">Select Bank</label>
+                    <select id="bank-select" name="bank" required
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                        {% for bank in supported_banks %}
+                        <option value="{{ bank.value }}">{{ bank.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Password Field (for encrypted PDFs) -->
+                <div class="mb-4">
+                    <label for="pdf-password" class="block text-sm font-medium text-gray-700 mb-2">
+                        PDF Password <span class="text-gray-400 font-normal">(if protected)</span>
+                    </label>
+                    <input type="password" id="pdf-password" name="password"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                           placeholder="Leave empty if not password-protected">
+                </div>
+
+                <!-- Drag & Drop Area -->
+                <div id="drop-zone"
+                     class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-primary-500 transition-colors cursor-pointer"
+                     onclick="document.getElementById('pdf-file').click()"
+                     ondragover="handleDragOver(event)"
+                     ondragleave="handleDragLeave(event)"
+                     ondrop="handleDrop(event)">
+                    <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                    </svg>
+                    <input type="file" id="pdf-file" name="file" accept=".pdf" required
+                           class="hidden" onchange="updateFileName(this)">
+                    <p class="text-gray-600 mb-2">
+                        <span class="text-primary-600 hover:text-primary-700 font-medium">Choose a PDF file</span>
+                        or drag and drop
+                    </p>
+                    <p id="file-name" class="text-sm text-gray-500">PDF bank statement up to 10MB</p>
+                </div>
+
+                <!-- Convert Button -->
+                <button type="submit" id="convert-btn"
+                        class="w-full mt-4 bg-primary-600 text-white py-3 px-4 rounded-lg hover:bg-primary-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled>
+                    <span id="btn-text">Select a PDF to Convert</span>
+                </button>
+            </form>
+
+            <!-- Result Section -->
+            <div id="result-section" class="hidden mt-6">
+                <div id="success-result" class="hidden bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div class="flex items-center text-green-700 mb-2">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        <span class="font-medium">Conversion Successful!</span>
+                    </div>
+                    <p class="text-sm text-green-600">Your CSV file has been downloaded.</p>
+                </div>
+
+                <div id="error-result" class="hidden bg-red-50 border border-red-200 rounded-lg p-4">
+                    <div class="flex items-center text-red-700 mb-2">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                        <span class="font-medium">Conversion Failed</span>
+                    </div>
+                    <p id="error-message" class="text-sm text-red-600"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Section -->
+        <div class="space-y-6">
+            <!-- Supported Banks -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h2 class="text-lg font-bold text-gray-800 mb-4">Supported Banks</h2>
+                <div class="space-y-3">
+                    <!-- Zenith Bank -->
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div class="flex items-center mb-2">
+                            <div class="p-2 bg-blue-100 rounded-lg mr-3">
+                                <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                            </div>
+                            <span class="font-semibold text-blue-800">Zenith Bank</span>
+                        </div>
+                        <p class="text-sm text-blue-700">
+                            Columns: DATE, DESCRIPTION, DEBIT, CREDIT, VALUE DATE, BALANCE
+                        </p>
+                    </div>
+                    <!-- GTBank -->
+                    <div class="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                        <div class="flex items-center mb-2">
+                            <div class="p-2 bg-orange-100 rounded-lg mr-3">
+                                <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                            </div>
+                            <span class="font-semibold text-orange-800">GTBank</span>
+                            <span class="ml-2 text-xs bg-orange-200 text-orange-800 px-2 py-0.5 rounded">Password Protected</span>
+                        </div>
+                        <p class="text-sm text-orange-700">
+                            Columns: Trans. Date, Value Date, Reference, Debits, Credits, Balance, Branch, Remarks
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Output Format -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h2 class="text-lg font-bold text-gray-800 mb-4">Output CSV Format</h2>
+                <div class="bg-gray-50 rounded-lg p-4 font-mono text-sm overflow-x-auto">
+                    <div class="text-gray-600 mb-2">Transaction Date,Narration,Amount,Running Balance</div>
+                    <div class="text-gray-800">01/12/2025,NIP CR/MOB/Client Payment,-60000.00,1380344.42</div>
+                    <div class="text-gray-800">01/12/2025,NIP CHARGE + VAT,-53.75,1380290.67</div>
+                    <div class="text-green-700">05/12/2025,TRF FROM Company/Salary,1500000.00,1608914.38</div>
+                </div>
+                <div class="mt-3 text-sm text-gray-600">
+                    <ul class="list-disc list-inside space-y-1">
+                        <li><strong>Debits</strong> (money out) are shown as <span class="text-red-600">negative</span> amounts</li>
+                        <li><strong>Credits</strong> (money in) are shown as <span class="text-green-600">positive</span> amounts</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- What Gets Parsed -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h2 class="text-lg font-bold text-gray-800 mb-4">Parsing Rules</h2>
+                <ul class="space-y-2 text-sm text-gray-600">
+                    <li class="flex items-start">
+                        <svg class="w-5 h-5 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        All transaction entries including charges and VAT
+                    </li>
+                    <li class="flex items-start">
+                        <svg class="w-5 h-5 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        Multi-line descriptions are combined into single fields
+                    </li>
+                    <li class="flex items-start">
+                        <svg class="w-5 h-5 text-red-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                        Opening Balance row is skipped
+                    </li>
+                    <li class="flex items-start">
+                        <svg class="w-5 h-5 text-red-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                        TOTALS and summary rows are skipped
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('pdf-file');
+    const convertBtn = document.getElementById('convert-btn');
+    const btnText = document.getElementById('btn-text');
+
+    function updateFileName(input) {
+        const fileName = input.files[0]?.name;
+        if (fileName) {
+            document.getElementById('file-name').textContent = fileName;
+            convertBtn.disabled = false;
+            btnText.textContent = 'Convert to CSV';
+        } else {
+            document.getElementById('file-name').textContent = 'PDF bank statement up to 10MB';
+            convertBtn.disabled = true;
+            btnText.textContent = 'Select a PDF to Convert';
+        }
+    }
+
+    function handleDragOver(event) {
+        event.preventDefault();
+        dropZone.classList.add('border-primary-500', 'bg-primary-50');
+    }
+
+    function handleDragLeave(event) {
+        event.preventDefault();
+        dropZone.classList.remove('border-primary-500', 'bg-primary-50');
+    }
+
+    function handleDrop(event) {
+        event.preventDefault();
+        dropZone.classList.remove('border-primary-500', 'bg-primary-50');
+
+        const files = event.dataTransfer.files;
+        if (files.length > 0 && files[0].type === 'application/pdf') {
+            fileInput.files = files;
+            updateFileName(fileInput);
+        }
+    }
+
+    async function convertPdf(event) {
+        event.preventDefault();
+
+        const file = fileInput.files[0];
+        if (!file) {
+            alert('Please select a PDF file');
+            return;
+        }
+
+        // Show loading state
+        convertBtn.disabled = true;
+        btnText.textContent = 'Converting...';
+
+        // Hide previous results
+        document.getElementById('result-section').classList.add('hidden');
+        document.getElementById('success-result').classList.add('hidden');
+        document.getElementById('error-result').classList.add('hidden');
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('bank', document.getElementById('bank-select').value);
+        formData.append('password', document.getElementById('pdf-password').value);
+
+        try {
+            const response = await fetch('/pdf-converter/convert', {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (response.ok) {
+                // Get the filename from Content-Disposition header
+                const contentDisposition = response.headers.get('Content-Disposition');
+                let filename = 'transactions.csv';
+                if (contentDisposition) {
+                    const match = contentDisposition.match(/filename="(.+)"/);
+                    if (match) {
+                        filename = match[1];
+                    }
+                }
+
+                // Download the file
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                a.remove();
+
+                // Show success message
+                document.getElementById('result-section').classList.remove('hidden');
+                document.getElementById('success-result').classList.remove('hidden');
+            } else {
+                const error = await response.json();
+                document.getElementById('result-section').classList.remove('hidden');
+                document.getElementById('error-result').classList.remove('hidden');
+                document.getElementById('error-message').textContent = error.detail || 'Failed to convert PDF';
+            }
+        } catch (error) {
+            console.error('Conversion error:', error);
+            document.getElementById('result-section').classList.remove('hidden');
+            document.getElementById('error-result').classList.remove('hidden');
+            document.getElementById('error-message').textContent = 'An error occurred while converting the PDF';
+        } finally {
+            convertBtn.disabled = false;
+            btnText.textContent = 'Convert to CSV';
+        }
+    }
+</script>
+{% endblock %}

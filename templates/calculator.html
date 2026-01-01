@@ -1,0 +1,348 @@
+{% extends "base.html" %}
+
+{% block title %}Salary/Dividend Calculator - Nigerian LLC Tax Tracker{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Page Header -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-white">Salary/Dividend Calculator</h1>
+            {% if company %}
+                <p class="text-green-200">{{ company.name }} - Optimize your take-home pay</p>
+            {% else %}
+                <p class="text-green-200">Calculate optimal salary and dividend split</p>
+            {% endif %}
+        </div>
+        <a href="/?company_id={{ company.id if company else '' }}"
+           class="inline-flex items-center px-4 py-2 bg-white text-gray-700 rounded-lg hover:bg-gray-100 transition-colors">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+            </svg>
+            Back to Dashboard
+        </a>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Calculator Input -->
+        <div class="bg-white rounded-xl shadow-lg p-6">
+            <h2 class="text-lg font-bold text-gray-800 mb-4">Calculate Your Optimal Split</h2>
+
+            <div class="space-y-4">
+                <div>
+                    <label for="desired-take-home" class="block text-sm font-medium text-gray-700 mb-1">
+                        Desired Take-Home Amount (Monthly)
+                    </label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₦</span>
+                        <input type="number"
+                               id="desired-take-home"
+                               class="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                               placeholder="500,000"
+                               min="0"
+                               step="1000">
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">Enter the amount you want to receive after all taxes</p>
+                </div>
+
+                {% if company and summary %}
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div class="flex items-center mb-2">
+                        <svg class="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span class="font-medium text-blue-800">Company Data</span>
+                    </div>
+                    <p class="text-sm text-blue-700">
+                        Available Profit: <span class="font-semibold">₦{{ "{:,.2f}".format(summary.net_profit|float) }}</span>
+                    </p>
+                    <p class="text-xs text-blue-600 mt-1">Based on {{ selected_month }} data</p>
+                </div>
+                {% endif %}
+
+                <button onclick="calculateSplit()"
+                        id="calculate-btn"
+                        class="w-full bg-primary-600 text-white py-3 px-4 rounded-lg hover:bg-primary-700 transition-colors font-medium">
+                    Calculate Optimal Split
+                </button>
+            </div>
+
+            <!-- Tax Rates Info -->
+            <div class="mt-6 pt-6 border-t border-gray-200">
+                <h3 class="text-sm font-semibold text-gray-700 mb-3">Nigerian Tax Rates Applied</h3>
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">PAYE (Personal Income Tax)</span>
+                        <span class="text-gray-800">7% - 24% (graduated)</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Dividend WHT</span>
+                        <span class="text-gray-800">10% (final tax)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results -->
+        <div class="bg-white rounded-xl shadow-lg p-6">
+            <h2 class="text-lg font-bold text-gray-800 mb-4">Recommended Split</h2>
+
+            <div id="results-placeholder" class="text-center py-12 text-gray-500">
+                <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                </svg>
+                <p>Enter your desired take-home amount to see the optimal split</p>
+            </div>
+
+            <div id="results-content" class="hidden space-y-6">
+                <!-- Optimal Split -->
+                <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div class="flex items-center mb-3">
+                        <div class="p-2 bg-green-100 rounded-full mr-3">
+                            <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                        </div>
+                        <span class="font-semibold text-green-800">Recommended Strategy</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-white rounded-lg p-3">
+                            <p class="text-xs text-gray-500 uppercase">Salary</p>
+                            <p id="recommended-salary" class="text-xl font-bold text-gray-800">₦0</p>
+                            <p id="salary-tax" class="text-xs text-red-600">Tax: ₦0</p>
+                        </div>
+                        <div class="bg-white rounded-lg p-3">
+                            <p class="text-xs text-gray-500 uppercase">Dividend</p>
+                            <p id="recommended-dividend" class="text-xl font-bold text-gray-800">₦0</p>
+                            <p id="dividend-wht" class="text-xs text-red-600">WHT: ₦0</p>
+                        </div>
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-green-200">
+                        <div class="flex justify-between items-center">
+                            <span class="text-green-700 font-medium">Total Tax (Optimal)</span>
+                            <span id="total-tax-optimal" class="text-xl font-bold text-green-700">₦0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Comparison with All Salary -->
+                <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <div class="flex items-center mb-3">
+                        <div class="p-2 bg-gray-100 rounded-full mr-3">
+                            <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                            </svg>
+                        </div>
+                        <span class="font-semibold text-gray-700">If All Salary</span>
+                    </div>
+                    <div class="space-y-2">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Gross Salary Required</span>
+                            <span id="all-salary-gross" class="font-semibold text-gray-800">₦0</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Total Tax</span>
+                            <span id="all-salary-tax" class="font-semibold text-red-600">₦0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tax Savings -->
+                <div id="savings-section" class="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-purple-100 rounded-full mr-3">
+                                <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="font-semibold text-purple-800">Your Tax Savings</p>
+                                <p class="text-xs text-purple-600">By using optimal split</p>
+                            </div>
+                        </div>
+                        <span id="tax-savings" class="text-2xl font-bold text-purple-700">₦0</span>
+                    </div>
+                </div>
+
+                <!-- Visual Comparison -->
+                <div class="mt-4">
+                    <h3 class="text-sm font-semibold text-gray-700 mb-3">Tax Comparison</h3>
+                    <div class="space-y-3">
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="text-gray-600">All Salary</span>
+                                <span id="all-salary-bar-label" class="text-gray-600">₦0</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-4">
+                                <div id="all-salary-bar" class="bg-red-500 h-4 rounded-full transition-all duration-500" style="width: 100%"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="text-gray-600">Optimal Split</span>
+                                <span id="optimal-bar-label" class="text-gray-600">₦0</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-4">
+                                <div id="optimal-bar" class="bg-green-500 h-4 rounded-full transition-all duration-500" style="width: 80%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Explanation Section -->
+    <div class="bg-white rounded-xl shadow-lg p-6">
+        <h2 class="text-lg font-bold text-gray-800 mb-4">How It Works</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="flex items-start">
+                <div class="flex-shrink-0 p-2 bg-blue-100 rounded-lg mr-4">
+                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-gray-800 mb-1">Salary (PAYE)</h3>
+                    <p class="text-sm text-gray-600">
+                        Salaries are taxed at graduated rates from 7% to 24%. Higher salaries mean higher tax rates.
+                    </p>
+                </div>
+            </div>
+            <div class="flex items-start">
+                <div class="flex-shrink-0 p-2 bg-green-100 rounded-lg mr-4">
+                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-gray-800 mb-1">Dividends (WHT)</h3>
+                    <p class="text-sm text-gray-600">
+                        Dividends are taxed at a flat 10% Withholding Tax rate, which is a final tax.
+                    </p>
+                </div>
+            </div>
+            <div class="flex items-start">
+                <div class="flex-shrink-0 p-2 bg-purple-100 rounded-lg mr-4">
+                    <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-gray-800 mb-1">Optimal Strategy</h3>
+                    <p class="text-sm text-gray-600">
+                        The optimal split takes some income as salary (lower brackets) and the rest as dividends at the flat 10% rate.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div class="flex items-start">
+                <svg class="w-5 h-5 text-yellow-600 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                </svg>
+                <p class="text-sm text-yellow-800">
+                    <strong>Disclaimer:</strong> This calculator provides estimates based on simplified tax calculations.
+                    Actual tax obligations may vary. Consult a qualified tax professional for personalized advice.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function formatCurrency(amount) {
+        return '₦' + parseFloat(amount).toLocaleString('en-NG', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+    }
+
+    async function calculateSplit() {
+        const desiredTakeHome = document.getElementById('desired-take-home').value;
+
+        if (!desiredTakeHome || parseFloat(desiredTakeHome) <= 0) {
+            alert('Please enter a valid amount');
+            return;
+        }
+
+        const btn = document.getElementById('calculate-btn');
+        btn.disabled = true;
+        btn.textContent = 'Calculating...';
+
+        try {
+            const response = await fetch('/reports/calculator/dividend', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    desired_take_home: parseFloat(desiredTakeHome),
+                    taxable_profit: 0
+                }),
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                displayResults(data);
+            } else {
+                alert('Calculation failed. Please try again.');
+            }
+        } catch (error) {
+            console.error('Calculation error:', error);
+            alert('Calculation failed. Please try again.');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Calculate Optimal Split';
+        }
+    }
+
+    function displayResults(data) {
+        // Hide placeholder, show results
+        document.getElementById('results-placeholder').classList.add('hidden');
+        document.getElementById('results-content').classList.remove('hidden');
+
+        // Update values
+        document.getElementById('recommended-salary').textContent = formatCurrency(data.recommended_salary);
+        document.getElementById('recommended-dividend').textContent = formatCurrency(data.recommended_dividend);
+        document.getElementById('salary-tax').textContent = 'Tax: ' + formatCurrency(data.salary_tax);
+        document.getElementById('dividend-wht').textContent = 'WHT: ' + formatCurrency(data.dividend_wht);
+        document.getElementById('total-tax-optimal').textContent = formatCurrency(data.total_tax_optimal);
+
+        document.getElementById('all-salary-gross').textContent = formatCurrency(data.all_salary_gross);
+        document.getElementById('all-salary-tax').textContent = formatCurrency(data.all_salary_tax);
+
+        document.getElementById('tax-savings').textContent = formatCurrency(data.tax_savings);
+
+        // Update comparison bars
+        const allSalaryTax = parseFloat(data.all_salary_tax);
+        const optimalTax = parseFloat(data.total_tax_optimal);
+        const maxTax = Math.max(allSalaryTax, optimalTax);
+
+        if (maxTax > 0) {
+            document.getElementById('all-salary-bar').style.width = '100%';
+            document.getElementById('optimal-bar').style.width = ((optimalTax / maxTax) * 100) + '%';
+        }
+
+        document.getElementById('all-salary-bar-label').textContent = formatCurrency(data.all_salary_tax);
+        document.getElementById('optimal-bar-label').textContent = formatCurrency(data.total_tax_optimal);
+
+        // Show/hide savings section based on savings amount
+        const savingsSection = document.getElementById('savings-section');
+        if (parseFloat(data.tax_savings) > 0) {
+            savingsSection.classList.remove('hidden');
+        } else {
+            savingsSection.classList.add('hidden');
+        }
+    }
+
+    // Allow Enter key to trigger calculation
+    document.getElementById('desired-take-home').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            calculateSplit();
+        }
+    });
+</script>
+{% endblock %}

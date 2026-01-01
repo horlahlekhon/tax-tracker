@@ -1,0 +1,795 @@
+{% extends "base.html" %}
+
+{% block title %}Transactions - Nigerian LLC Tax Tracker{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Page Header -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-white">Transactions</h1>
+            {% if company %}
+                <p class="text-green-200">{{ company.name }}</p>
+            {% else %}
+                <p class="text-green-200">Select a company to view transactions</p>
+            {% endif %}
+        </div>
+        <div class="flex flex-wrap items-center gap-3">
+            <!-- Search Input -->
+            <div class="relative">
+                <input type="text" id="search-input" placeholder="Search transactions..."
+                       oninput="searchTransactions(this.value)"
+                       class="bg-white border border-gray-300 rounded-lg py-2 pl-10 pr-4 text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 w-48 sm:w-64">
+                <svg class="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+            </div>
+
+            <!-- Month Filter with Navigation -->
+            <div class="flex items-center gap-1">
+                <button onclick="navigateMonth(-1)"
+                        class="bg-white border border-gray-300 rounded-lg p-2 text-gray-600 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        title="Previous month">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                </button>
+                <input type="month" id="month-filter" value="{{ selected_month }}"
+                       onchange="filterByMonth(this.value)"
+                       class="bg-white border border-gray-300 rounded-lg py-2 px-4 text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500">
+                <button onclick="navigateMonth(1)"
+                        class="bg-white border border-gray-300 rounded-lg p-2 text-gray-600 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        title="Next month">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </button>
+            </div>
+
+            {% if company %}
+                <!-- Upload CSV Button -->
+                <button onclick="openUploadModal()"
+                        class="bg-white text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-lg transition-colors flex items-center space-x-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                    </svg>
+                    <span>Upload CSV</span>
+                </button>
+
+                <!-- Add Transaction Button -->
+                <button onclick="openAddTransactionModal()"
+                        class="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    <span>Add Transaction</span>
+                </button>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if company %}
+        <!-- Transactions Table -->
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+            {% if transactions %}
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendor/Client</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bank</th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                                <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Receipt</th>
+                                <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for txn in transactions %}
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                        {{ txn.date }}
+                                    </td>
+                                    <td class="px-6 py-4 text-sm text-gray-900 max-w-xs truncate" title="{{ txn.description }}">
+                                        {{ txn.description }}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                        {{ txn.vendor_client or '-' }}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                            {% if txn.category.value == 'Income' %}bg-green-100 text-green-800
+                                            {% elif txn.category.value == 'Direct Expenses' %}bg-blue-100 text-blue-800
+                                            {% elif txn.category.value == 'Operating Expenses' %}bg-yellow-100 text-yellow-800
+                                            {% elif txn.category.value == 'Capital Expenses' %}bg-purple-100 text-purple-800
+                                            {% else %}bg-red-100 text-red-800{% endif %}">
+                                            {{ txn.category.value }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                        {% if txn.bank %}
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
+                                                {{ txn.bank.value }}
+                                            </span>
+                                        {% else %}
+                                            <span class="text-gray-400">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-medium {{ 'text-green-600' if txn.amount > 0 else 'text-red-600' }}">
+                                        {{ '₦{:,.2f}'.format(txn.amount|abs) }}
+                                        {% if txn.amount < 0 %}
+                                            <span class="text-gray-400 text-xs">DR</span>
+                                        {% else %}
+                                            <span class="text-gray-400 text-xs">CR</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                                        {% if txn.has_receipt %}
+                                            <span class="text-green-500">
+                                                <svg class="w-5 h-5 mx-auto" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                                </svg>
+                                            </span>
+                                        {% else %}
+                                            <span class="text-gray-300">
+                                                <svg class="w-5 h-5 mx-auto" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                                                </svg>
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                                        <div class="flex justify-center space-x-2">
+                                            <button onclick="openEditTransactionModal('{{ txn.id }}', '{{ txn.date }}', '{{ txn.description|e }}', '{{ txn.amount }}', '{{ txn.vendor_client|default('', true)|e }}', '{{ txn.category.value }}', '{{ txn.bank.value if txn.bank else '' }}', {{ 'true' if txn.has_receipt else 'false' }}, '{{ txn.notes|default('', true)|e }}')"
+                                                    class="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded transition-colors"
+                                                    title="Edit">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                                </svg>
+                                            </button>
+                                            <button onclick="confirmDeleteTransaction('{{ txn.id }}', '{{ txn.description|e }}')"
+                                                    class="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                                    title="Delete">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Summary Footer -->
+                <div class="bg-gray-50 px-6 py-4 border-t border-gray-200">
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="text-gray-600">{{ transactions|length }} transaction(s) for {{ selected_month }}</span>
+                        <div class="flex space-x-6">
+                            <span class="text-green-600 font-medium">
+                                Income: ₦{{ '{:,.2f}'.format(transactions|selectattr('amount', 'gt', 0)|map(attribute='amount')|sum) }}
+                            </span>
+                            <span class="text-red-600 font-medium">
+                                Expenses: ₦{{ '{:,.2f}'.format(transactions|selectattr('amount', 'lt', 0)|map(attribute='amount')|sum|abs) }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <!-- Empty State -->
+                <div class="p-12 text-center">
+                    <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                    </svg>
+                    <h3 class="text-lg font-medium text-gray-800 mb-2">No Transactions</h3>
+                    <p class="text-gray-600 mb-6">No transactions found for {{ selected_month }}.</p>
+                    <div class="flex justify-center space-x-3">
+                        <button onclick="openUploadModal()"
+                                class="inline-flex items-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                            </svg>
+                            Upload CSV
+                        </button>
+                        <button onclick="openAddTransactionModal()"
+                                class="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                            </svg>
+                            Add Transaction
+                        </button>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    {% else %}
+        <!-- No Company Selected -->
+        <div class="bg-white rounded-xl shadow-lg p-12 text-center">
+            <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+            </svg>
+            <h2 class="text-xl font-bold text-gray-800 mb-2">No Company Selected</h2>
+            <p class="text-gray-600 mb-6">Add a company or select one from the dropdown to manage transactions.</p>
+            <button onclick="openAddCompanyModal()"
+                    class="inline-flex items-center px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                Add Your First Company
+            </button>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Add Transaction Modal -->
+<div id="add-transaction-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 overflow-y-auto">
+    <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full mx-4 my-8 p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-xl font-bold text-gray-800">Add Transaction</h2>
+            <button onclick="closeAddTransactionModal()" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        <form id="add-transaction-form" onsubmit="submitAddTransaction(event)">
+            <div class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="txn-date" class="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                        <input type="date" id="txn-date" name="date" required
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label for="txn-category" class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                        <select id="txn-category" name="category" required
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                            {% for cat in categories %}
+                                <option value="{{ cat }}">{{ cat }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label for="txn-description" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <input type="text" id="txn-description" name="description" required
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="txn-amount" class="block text-sm font-medium text-gray-700 mb-1">Amount (₦)</label>
+                        <input type="number" id="txn-amount" name="amount" step="0.01" required
+                               placeholder="Use negative for expenses"
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                        <p class="text-xs text-gray-500 mt-1">Positive = Income, Negative = Expense</p>
+                    </div>
+                    <div>
+                        <label for="txn-vendor-client" class="block text-sm font-medium text-gray-700 mb-1">Vendor/Client</label>
+                        <input type="text" id="txn-vendor-client" name="vendor_client" list="vendor-client-list"
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                        <datalist id="vendor-client-list"></datalist>
+                    </div>
+                </div>
+                <div>
+                    <label for="txn-bank" class="block text-sm font-medium text-gray-700 mb-1">Bank</label>
+                    <select id="txn-bank" name="bank"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                        <option value="">-- Select Bank --</option>
+                        {% for bank in banks %}
+                            <option value="{{ bank.value }}">{{ bank.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label for="txn-notes" class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                    <textarea id="txn-notes" name="notes" rows="2"
+                              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"></textarea>
+                </div>
+                <div class="flex items-center">
+                    <input type="checkbox" id="txn-has-receipt" name="has_receipt"
+                           class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded">
+                    <label for="txn-has-receipt" class="ml-2 text-sm text-gray-700">Has Receipt</label>
+                </div>
+            </div>
+            <div class="mt-6 flex space-x-3">
+                <button type="button" onclick="closeAddTransactionModal()"
+                        class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+                    Cancel
+                </button>
+                <button type="submit"
+                        class="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+                    Add Transaction
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Transaction Modal -->
+<div id="edit-transaction-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 overflow-y-auto">
+    <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full mx-4 my-8 p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-xl font-bold text-gray-800">Edit Transaction</h2>
+            <button onclick="closeEditTransactionModal()" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        <form id="edit-transaction-form" onsubmit="submitEditTransaction(event)">
+            <input type="hidden" id="edit-txn-id" name="id">
+            <div class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="edit-txn-date" class="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                        <input type="date" id="edit-txn-date" name="date" required
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label for="edit-txn-category" class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                        <select id="edit-txn-category" name="category" required
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                            {% for cat in categories %}
+                                <option value="{{ cat }}">{{ cat }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label for="edit-txn-description" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <input type="text" id="edit-txn-description" name="description" required
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="edit-txn-amount" class="block text-sm font-medium text-gray-700 mb-1">Amount (₦)</label>
+                        <input type="number" id="edit-txn-amount" name="amount" step="0.01" required
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label for="edit-txn-vendor-client" class="block text-sm font-medium text-gray-700 mb-1">Vendor/Client</label>
+                        <input type="text" id="edit-txn-vendor-client" name="vendor_client" list="vendor-client-list"
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                    </div>
+                </div>
+                <div>
+                    <label for="edit-txn-bank" class="block text-sm font-medium text-gray-700 mb-1">Bank</label>
+                    <select id="edit-txn-bank" name="bank"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                        <option value="">-- Select Bank --</option>
+                        {% for bank in banks %}
+                            <option value="{{ bank.value }}">{{ bank.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label for="edit-txn-notes" class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                    <textarea id="edit-txn-notes" name="notes" rows="2"
+                              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"></textarea>
+                </div>
+                <div class="flex items-center">
+                    <input type="checkbox" id="edit-txn-has-receipt" name="has_receipt"
+                           class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded">
+                    <label for="edit-txn-has-receipt" class="ml-2 text-sm text-gray-700">Has Receipt</label>
+                </div>
+            </div>
+            <div class="mt-6 flex space-x-3">
+                <button type="button" onclick="closeEditTransactionModal()"
+                        class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+                    Cancel
+                </button>
+                <button type="submit"
+                        class="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+                    Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Upload CSV Modal -->
+<div id="upload-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-xl font-bold text-gray-800">Upload Bank Statement</h2>
+            <button onclick="closeUploadModal()" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        <form id="upload-form" onsubmit="submitUpload(event)" enctype="multipart/form-data">
+            <div class="space-y-4">
+                <div>
+                    <label for="upload-bank" class="block text-sm font-medium text-gray-700 mb-2">Bank</label>
+                    <select id="upload-bank" name="bank"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                        <option value="">-- Select Bank --</option>
+                        {% for bank in banks %}
+                            <option value="{{ bank.value }}">{{ bank.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-primary-500 transition-colors">
+                    <svg class="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                    </svg>
+                    <input type="file" id="csv-file" name="file" accept=".csv" required
+                           class="hidden" onchange="updateFileName(this)">
+                    <label for="csv-file" class="cursor-pointer">
+                        <span class="text-primary-600 hover:text-primary-700 font-medium">Choose a file</span>
+                        <span class="text-gray-500"> or drag and drop</span>
+                    </label>
+                    <p id="file-name" class="text-sm text-gray-500 mt-2">CSV file up to 10MB</p>
+                </div>
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h4 class="text-sm font-medium text-blue-800 mb-2">Supported Formats</h4>
+                    <ul class="text-xs text-blue-700 space-y-1">
+                        <li>Columns: Date, Description, Debit/Credit or Amount</li>
+                        <li>Nigerian bank statement formats (GTBank, UBA, Access, etc.)</li>
+                        <li>Transactions will be auto-categorized</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="mt-6 flex space-x-3">
+                <button type="button" onclick="closeUploadModal()"
+                        class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+                    Cancel
+                </button>
+                <button type="submit" id="upload-btn"
+                        class="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+                    Upload & Import
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="delete-transaction-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 p-6">
+        <div class="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full mb-4">
+            <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            </svg>
+        </div>
+        <h2 class="text-xl font-bold text-gray-800 text-center mb-2">Delete Transaction?</h2>
+        <p class="text-gray-600 text-center mb-6">
+            Are you sure you want to delete "<span id="delete-txn-description" class="font-semibold"></span>"?
+        </p>
+        <input type="hidden" id="delete-txn-id">
+        <div class="flex space-x-3">
+            <button onclick="closeDeleteTransactionModal()"
+                    class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+                Cancel
+            </button>
+            <button onclick="deleteTransaction()"
+                    class="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                Delete
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const companyId = '{{ company.id if company else "" }}';
+    const selectedMonth = '{{ selected_month }}';
+
+    // Set default date to today
+    document.addEventListener('DOMContentLoaded', function() {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('txn-date').value = today;
+        loadVendorClientList();
+    });
+
+    function filterByMonth(month) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('month', month);
+        if (companyId) {
+            url.searchParams.set('company_id', companyId);
+        }
+        window.location.href = url.toString();
+    }
+
+    function navigateMonth(direction) {
+        const monthInput = document.getElementById('month-filter');
+        const [year, month] = monthInput.value.split('-').map(Number);
+
+        let newMonth = month + direction;
+        let newYear = year;
+
+        if (newMonth < 1) {
+            newMonth = 12;
+            newYear -= 1;
+        } else if (newMonth > 12) {
+            newMonth = 1;
+            newYear += 1;
+        }
+
+        const newValue = `${newYear}-${String(newMonth).padStart(2, '0')}`;
+        filterByMonth(newValue);
+    }
+
+    function searchTransactions(query) {
+        const searchTerm = query.toLowerCase().trim();
+        const tableBody = document.querySelector('table tbody');
+        if (!tableBody) return;
+
+        const rows = tableBody.querySelectorAll('tr');
+        let visibleCount = 0;
+
+        rows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            const rowText = Array.from(cells).map(cell => cell.textContent.toLowerCase()).join(' ');
+
+            if (searchTerm === '' || rowText.includes(searchTerm)) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        // Update visible count in summary
+        updateSearchSummary(visibleCount, rows.length, searchTerm);
+    }
+
+    function updateSearchSummary(visible, total, searchTerm) {
+        const summarySpan = document.querySelector('.bg-gray-50 .text-gray-600');
+        if (summarySpan && searchTerm) {
+            const originalText = summarySpan.dataset.original || summarySpan.textContent;
+            summarySpan.dataset.original = originalText;
+            summarySpan.textContent = `Showing ${visible} of ${total} transaction(s)`;
+        } else if (summarySpan && summarySpan.dataset.original) {
+            summarySpan.textContent = summarySpan.dataset.original;
+        }
+    }
+
+    async function loadVendorClientList() {
+        if (!companyId) return;
+
+        try {
+            const [vendorsRes, clientsRes] = await Promise.all([
+                fetch(`/transactions/vendors?company_id=${companyId}`),
+                fetch(`/transactions/clients?company_id=${companyId}`)
+            ]);
+
+            const vendors = await vendorsRes.json();
+            const clients = await clientsRes.json();
+
+            const datalist = document.getElementById('vendor-client-list');
+            datalist.innerHTML = '';
+
+            const all = [...new Set([...vendors, ...clients])];
+            all.forEach(name => {
+                const option = document.createElement('option');
+                option.value = name;
+                datalist.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Failed to load vendor/client list:', error);
+        }
+    }
+
+    // Add Transaction Modal
+    function openAddTransactionModal() {
+        const modal = document.getElementById('add-transaction-modal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+
+    function closeAddTransactionModal() {
+        const modal = document.getElementById('add-transaction-modal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.getElementById('add-transaction-form').reset();
+        document.getElementById('txn-date').value = new Date().toISOString().split('T')[0];
+    }
+
+    async function submitAddTransaction(event) {
+        event.preventDefault();
+
+        const data = {
+            company_id: companyId,
+            date: document.getElementById('txn-date').value,
+            description: document.getElementById('txn-description').value,
+            amount: parseFloat(document.getElementById('txn-amount').value),
+            vendor_client: document.getElementById('txn-vendor-client').value || null,
+            category: document.getElementById('txn-category').value,
+            bank: document.getElementById('txn-bank').value || null,
+            has_receipt: document.getElementById('txn-has-receipt').checked,
+            notes: document.getElementById('txn-notes').value || null,
+        };
+
+        try {
+            const response = await fetch('/transactions/api', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            });
+
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                const error = await response.json();
+                alert('Error: ' + (error.detail || 'Failed to add transaction'));
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+
+    // Edit Transaction Modal
+    function openEditTransactionModal(id, date, description, amount, vendorClient, category, bank, hasReceipt, notes) {
+        document.getElementById('edit-txn-id').value = id;
+        document.getElementById('edit-txn-date').value = date;
+        document.getElementById('edit-txn-description').value = description;
+        document.getElementById('edit-txn-amount').value = amount;
+        document.getElementById('edit-txn-vendor-client').value = vendorClient;
+        document.getElementById('edit-txn-category').value = category;
+        document.getElementById('edit-txn-bank').value = bank;
+        document.getElementById('edit-txn-has-receipt').checked = hasReceipt;
+        document.getElementById('edit-txn-notes').value = notes;
+
+        const modal = document.getElementById('edit-transaction-modal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+
+    function closeEditTransactionModal() {
+        const modal = document.getElementById('edit-transaction-modal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.getElementById('edit-transaction-form').reset();
+    }
+
+    async function submitEditTransaction(event) {
+        event.preventDefault();
+        const transactionId = document.getElementById('edit-txn-id').value;
+
+        const data = {
+            date: document.getElementById('edit-txn-date').value,
+            description: document.getElementById('edit-txn-description').value,
+            amount: parseFloat(document.getElementById('edit-txn-amount').value),
+            vendor_client: document.getElementById('edit-txn-vendor-client').value || null,
+            category: document.getElementById('edit-txn-category').value,
+            bank: document.getElementById('edit-txn-bank').value || null,
+            has_receipt: document.getElementById('edit-txn-has-receipt').checked,
+            notes: document.getElementById('edit-txn-notes').value || null,
+        };
+
+        try {
+            const response = await fetch(`/transactions/api/${transactionId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            });
+
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                const error = await response.json();
+                alert('Error: ' + (error.detail || 'Failed to update transaction'));
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+
+    // Delete Transaction Modal
+    function confirmDeleteTransaction(id, description) {
+        document.getElementById('delete-txn-id').value = id;
+        document.getElementById('delete-txn-description').textContent = description;
+
+        const modal = document.getElementById('delete-transaction-modal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+
+    function closeDeleteTransactionModal() {
+        const modal = document.getElementById('delete-transaction-modal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+    async function deleteTransaction() {
+        const transactionId = document.getElementById('delete-txn-id').value;
+
+        try {
+            const response = await fetch(`/transactions/api/${transactionId}`, {
+                method: 'DELETE',
+            });
+
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                const error = await response.json();
+                alert('Error: ' + (error.detail || 'Failed to delete transaction'));
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+
+    // Upload CSV Modal
+    function openUploadModal() {
+        const modal = document.getElementById('upload-modal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+
+    function closeUploadModal() {
+        const modal = document.getElementById('upload-modal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.getElementById('upload-form').reset();
+        document.getElementById('file-name').textContent = 'CSV file up to 10MB';
+    }
+
+    function updateFileName(input) {
+        const fileName = input.files[0]?.name || 'CSV file up to 10MB';
+        document.getElementById('file-name').textContent = fileName;
+    }
+
+    async function submitUpload(event) {
+        event.preventDefault();
+        const btn = document.getElementById('upload-btn');
+        btn.disabled = true;
+        btn.textContent = 'Uploading...';
+
+        const formData = new FormData();
+        formData.append('file', document.getElementById('csv-file').files[0]);
+        formData.append('company_id', companyId);
+        const bank = document.getElementById('upload-bank').value;
+        if (bank) {
+            formData.append('bank', bank);
+        }
+
+        try {
+            const response = await fetch('/transactions/upload', {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                alert(result.message);
+                window.location.reload();
+            } else {
+                const error = await response.json();
+                alert('Error: ' + (error.detail || 'Failed to upload CSV'));
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Upload & Import';
+        }
+    }
+
+    // Close modals on escape key
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closeAddTransactionModal();
+            closeEditTransactionModal();
+            closeDeleteTransactionModal();
+            closeUploadModal();
+        }
+    });
+
+    // Close modals on backdrop click
+    ['add-transaction-modal', 'edit-transaction-modal', 'delete-transaction-modal', 'upload-modal'].forEach(id => {
+        document.getElementById(id)?.addEventListener('click', function(event) {
+            if (event.target === this) {
+                this.classList.add('hidden');
+                this.classList.remove('flex');
+            }
+        });
+    });
+</script>
+{% endblock %}

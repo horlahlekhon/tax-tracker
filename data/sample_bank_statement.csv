@@ -1,0 +1,29 @@
+Date,Description,Debit,Credit,Balance
+01/12/2024,Client Payment - ABC Ltd,,5000000.00,5000000.00
+02/12/2024,Invoice Payment - XYZ Corp,,2500000.00,7500000.00
+03/12/2024,Office Rent Payment,450000.00,,7050000.00
+05/12/2024,Electricity Bill - IKEDC,85000.00,,6965000.00
+06/12/2024,Internet Subscription - MTN,35000.00,,6930000.00
+07/12/2024,Sales Revenue - Product A,,1800000.00,8730000.00
+08/12/2024,Inventory Purchase - Raw Materials,650000.00,,8080000.00
+10/12/2024,Staff Salary Payment,1200000.00,,6880000.00
+11/12/2024,Office Stationery,25000.00,,6855000.00
+12/12/2024,Client Payment - DEF Inc,,3200000.00,10055000.00
+13/12/2024,Software Subscription - Microsoft 365,45000.00,,10010000.00
+14/12/2024,Shipping and Logistics,180000.00,,9830000.00
+15/12/2024,Revenue from Services,,1500000.00,11330000.00
+16/12/2024,Security Services,75000.00,,11255000.00
+17/12/2024,Equipment Purchase - Laptop,850000.00,,10405000.00
+18/12/2024,Client Refund,120000.00,,10285000.00
+19/12/2024,Airtime Purchase,15000.00,,10270000.00
+20/12/2024,Insurance Premium,200000.00,,10070000.00
+21/12/2024,Invoice Payment - GHI Company,,2800000.00,12870000.00
+22/12/2024,Maintenance and Repairs,95000.00,,12775000.00
+23/12/2024,Cloud Hosting - AWS,125000.00,,12650000.00
+24/12/2024,Delivery Services,55000.00,,12595000.00
+26/12/2024,Entertainment Expense,80000.00,,12515000.00
+27/12/2024,Donation to Charity,50000.00,,12465000.00
+28/12/2024,Sales Revenue,,2100000.00,14565000.00
+29/12/2024,Office Cleaning Services,40000.00,,14525000.00
+30/12/2024,Furniture Purchase,450000.00,,14075000.00
+31/12/2024,End of Month Transfer Received,,1000000.00,15075000.00
