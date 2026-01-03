@@ -73,6 +73,7 @@ ruff check .
 The `utils/pdf_statement_parser.py` module handles converting bank PDF statements to CSV:
 - **Zenith Bank**: 6-column format (DATE, DESCRIPTION, DEBIT, CREDIT, VALUE DATE, BALANCE), date format DD/MM/YYYY
 - **GTBank**: 8-column format (Trans. Date, Value Date, Reference, Debits, Credits, Balance, Originating Branch, Remarks), date format DD-MMM-YYYY, supports password-protected PDFs
+- **Kuda Bank**: 7-column text layout (Date/Time, Money In, Money Out, Category, To/From, Description, Balance), date format DD/MM/YY, uses text extraction instead of table parsing
 
 To add a new bank parser:
 1. Add bank to `SupportedBank` enum in `pdf_statement_parser.py`

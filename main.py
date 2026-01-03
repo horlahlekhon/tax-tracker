@@ -1,13 +1,15 @@
-from datetime import datetime
+import datetime
 from typing import Optional
 
 from fastapi import FastAPI, Request
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
 
-from routes import companies, transactions, reports, gdrive, pdf_converter
-from utils.storage import get_companies, get_company, get_transactions, get_transactions_ytd
+from routes import companies, transactions, reports, gdrive, pdf_converter, assets, auth
+from routes.auth import get_current_company, AUTH_COOKIE_NAME
+from utils.storage import get_companies, get_company, get_transactions, get_transactions_ytd, get_total_assets_value
 from utils.tax_calculator import calculate_tax_summary
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -25,34 +27,56 @@ app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
 # Include routers
+app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(companies.router, prefix="/companies", tags=["companies"])
 app.include_router(transactions.router, prefix="/transactions", tags=["transactions"])
 app.include_router(reports.router, prefix="/reports", tags=["reports"])
 app.include_router(gdrive.router, prefix="/gdrive", tags=["gdrive"])
 app.include_router(pdf_converter.router, prefix="/pdf-converter", tags=["pdf-converter"])
+app.include_router(assets.router, prefix="/assets", tags=["assets"])
+
+
+# Public paths that don't require authentication
+PUBLIC_PATHS = {"/auth/signin", "/auth/register", "/auth/signout", "/health"}
+
+
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    """Middleware to check authentication and redirect to sign-in if needed."""
+    path = request.url.path
+
+    # Allow public paths and static files
+    if path in PUBLIC_PATHS or path.startswith("/static") or path.startswith("/auth"):
+        return await call_next(request)
+
+    # Check if user is authenticated
+    company_id = request.cookies.get(AUTH_COOKIE_NAME)
+    if not company_id:
+        return RedirectResponse(url="/auth/signin", status_code=302)
+
+    # Verify the company still exists
+    company = get_company(company_id)
+    if not company:
+        response = RedirectResponse(url="/auth/signin", status_code=302)
+        response.delete_cookie(key=AUTH_COOKIE_NAME)
+        return response
+
+    return await call_next(request)
 
 
 @app.get("/")
 async def home(
     request: Request,
-    company_id: Optional[str] = None,
     month: Optional[str] = None,
     period: str = "month",
 ):
     """Dashboard home page."""
-    all_companies = get_companies()
-
-    # Get selected company
-    company = None
-    if company_id:
-        company = get_company(company_id)
-    elif all_companies:
-        # Default to first company if none selected
-        company = all_companies[0]
+    # Get authenticated company
+    company = get_current_company(request)
 
     # Get current month if not specified
     if not month:
-        month = datetime.now().strftime("%Y-%m")
+        month = datetime.datetime.now().strftime("%Y-%m")
 
     # Calculate tax summary
     summary = None
@@ -67,7 +91,13 @@ async def home(
         # For threshold calculations, use YTD revenue
         year = int(month.split("-")[0])
         ytd_txns = get_transactions_ytd(company.id, year)
-        ytd_summary = calculate_tax_summary(ytd_txns, period_type="ytd")
+
+        # Get total assets for threshold calculation
+        total_assets = get_total_assets_value(company.id)
+
+        ytd_summary = calculate_tax_summary(
+            ytd_txns, period_type="ytd", total_assets=total_assets
+        )
         annual_revenue = ytd_summary.total_revenue
 
         # Calculate summary for selected period
@@ -75,6 +105,7 @@ async def home(
             txns,
             period_type=period,
             annual_revenue_override=annual_revenue,
+            total_assets=total_assets,
         )
 
     return templates.TemplateResponse(
@@ -82,7 +113,6 @@ async def home(
         {
             "request": request,
             "company": company,
-            "companies": all_companies,
             "summary": summary,
             "selected_month": month,
             "selected_period": period,
@@ -93,36 +123,31 @@ async def home(
 @app.get("/calculator")
 async def calculator(
     request: Request,
-    company_id: Optional[str] = None,
     month: Optional[str] = None,
 ):
     """Salary/Dividend Calculator page."""
-    all_companies = get_companies()
-
-    # Get selected company
-    company = None
-    if company_id:
-        company = get_company(company_id)
-    elif all_companies:
-        company = all_companies[0]
+    # Get authenticated company
+    company = get_current_company(request)
 
     # Get current month if not specified
     if not month:
-        month = datetime.now().strftime("%Y-%m")
+        month = datetime.datetime.now().strftime("%Y-%m")
 
     # Calculate tax summary if company exists
     summary = None
     if company:
         year = int(month.split("-")[0])
         ytd_txns = get_transactions_ytd(company.id, year)
-        summary = calculate_tax_summary(ytd_txns, period_type="ytd")
+        total_assets = get_total_assets_value(company.id)
+        summary = calculate_tax_summary(
+            ytd_txns, period_type="ytd", total_assets=total_assets
+        )
 
     return templates.TemplateResponse(
         "calculator.html",
         {
             "request": request,
             "company": company,
-            "companies": all_companies,
             "summary": summary,
             "selected_month": month,
         },

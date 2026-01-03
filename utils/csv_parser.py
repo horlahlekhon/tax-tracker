@@ -164,7 +164,8 @@ def categorize_transaction(description: str, amount: Decimal) -> TransactionCate
 def parse_bank_statement(
     csv_content: str,
     company_id: str,
-    bank: Optional[BankName] = None
+    bank: Optional[BankName] = None,
+    file_hash: Optional[str] = None,
 ) -> list[Transaction]:
     """Parse a bank statement CSV and return list of Transaction objects.
 
@@ -172,6 +173,7 @@ def parse_bank_statement(
         csv_content: The CSV content as a string
         company_id: The company ID to associate transactions with
         bank: Optional bank name to associate with all transactions
+        file_hash: Hash of the source CSV file for deduplication
     """
     transactions = []
 
@@ -260,7 +262,7 @@ def parse_bank_statement(
             # Auto-categorize
             category = categorize_transaction(description, amount)
 
-            # Create transaction
+            # Create transaction with file_hash for deduplication
             transaction = Transaction(
                 company_id=company_id,
                 date=parsed_date.date(),
@@ -271,6 +273,7 @@ def parse_bank_statement(
                 has_receipt=False,
                 vendor_client=None,
                 notes="Imported from CSV",
+                file_hash=file_hash,
             )
             transactions.append(transaction)
 

@@ -20,6 +20,7 @@ router = APIRouter()
 SUPPORTED_BANKS = [
     {"value": SupportedBank.ZENITH.value, "label": "Zenith Bank"},
     {"value": SupportedBank.GTBANK.value, "label": "GTBank"},
+    {"value": SupportedBank.KUDA.value, "label": "Kuda Bank"},
 ]
 
 

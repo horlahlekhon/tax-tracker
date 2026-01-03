@@ -245,7 +245,7 @@
                     </div>
                     <div>
                         <label for="txn-category" class="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                        <select id="txn-category" name="category" required
+                        <select id="txn-category" name="category" required onchange="toggleAssetFields()"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
                             {% for cat in categories %}
                                 <option value="{{ cat }}">{{ cat }}</option>
@@ -293,6 +293,25 @@
                            class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded">
                     <label for="txn-has-receipt" class="ml-2 text-sm text-gray-700">Has Receipt</label>
                 </div>
+
+                <!-- Register as Asset toggle - shown only for Capital Expenses -->
+                <div id="asset-toggle-container" class="hidden border-t border-gray-200 pt-4 mt-4">
+                    <div class="flex items-center">
+                        <input type="checkbox" id="txn-register-asset" name="register_as_asset"
+                               onchange="toggleAssetNameField(this.checked)"
+                               class="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded">
+                        <label for="txn-register-asset" class="ml-2 text-sm text-gray-700">Register as Asset</label>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">Create an asset record from this transaction</p>
+                </div>
+
+                <!-- Asset Name field (shown when register as asset is checked) -->
+                <div id="asset-name-container" class="hidden">
+                    <label for="txn-asset-name" class="block text-sm font-medium text-gray-700 mb-1">Asset Name *</label>
+                    <input type="text" id="txn-asset-name" name="asset_name"
+                           placeholder="e.g., Dell PowerEdge Server"
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                </div>
             </div>
             <div class="mt-6 flex space-x-3">
                 <button type="button" onclick="closeAddTransactionModal()"
@@ -330,7 +349,7 @@
                     </div>
                     <div>
                         <label for="edit-txn-category" class="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                        <select id="edit-txn-category" name="category" required
+                        <select id="edit-txn-category" name="category" required onchange="toggleEditAssetFields()"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
                             {% for cat in categories %}
                                 <option value="{{ cat }}">{{ cat }}</option>
@@ -375,6 +394,38 @@
                            class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded">
                     <label for="edit-txn-has-receipt" class="ml-2 text-sm text-gray-700">Has Receipt</label>
                 </div>
+
+                <!-- Register as Asset toggle - shown only for Capital Expenses -->
+                <div id="edit-asset-toggle-container" class="hidden border-t border-gray-200 pt-4 mt-4">
+                    <div class="flex items-center">
+                        <input type="checkbox" id="edit-txn-register-asset" name="register_as_asset"
+                               onchange="toggleEditAssetNameField(this.checked)"
+                               class="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded">
+                        <label for="edit-txn-register-asset" class="ml-2 text-sm text-gray-700">Register as Asset</label>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">Create an asset record from this transaction</p>
+                </div>
+
+                <!-- Asset Name field (shown when register as asset is checked) -->
+                <div id="edit-asset-name-container" class="hidden">
+                    <label for="edit-txn-asset-name" class="block text-sm font-medium text-gray-700 mb-1">Asset Name *</label>
+                    <input type="text" id="edit-txn-asset-name" name="asset_name"
+                           placeholder="e.g., Dell PowerEdge Server"
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                </div>
+
+                <!-- Existing Asset Info (shown when transaction already has an asset) -->
+                <div id="edit-existing-asset-container" class="hidden border-t border-gray-200 pt-4 mt-4">
+                    <div class="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                        <div class="flex items-center">
+                            <svg class="w-5 h-5 text-purple-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <span class="text-sm font-medium text-purple-800">Linked to Asset: </span>
+                            <span id="edit-existing-asset-name" class="text-sm text-purple-700 ml-1"></span>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="mt-6 flex space-x-3">
                 <button type="button" onclick="closeEditTransactionModal()"
@@ -404,8 +455,8 @@
         <form id="upload-form" onsubmit="submitUpload(event)" enctype="multipart/form-data">
             <div class="space-y-4">
                 <div>
-                    <label for="upload-bank" class="block text-sm font-medium text-gray-700 mb-2">Bank</label>
-                    <select id="upload-bank" name="bank"
+                    <label for="upload-bank" class="block text-sm font-medium text-gray-700 mb-2">Bank <span class="text-red-500">*</span></label>
+                    <select id="upload-bank" name="bank" required onchange="validateUploadForm()"
                             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
                         <option value="">-- Select Bank --</option>
                         {% for bank in banks %}
@@ -418,18 +469,42 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
                     </svg>
                     <input type="file" id="csv-file" name="file" accept=".csv" required
-                           class="hidden" onchange="updateFileName(this)">
+                           class="hidden" onchange="updateFileName(this); validateUploadForm();">
                     <label for="csv-file" class="cursor-pointer">
                         <span class="text-primary-600 hover:text-primary-700 font-medium">Choose a file</span>
                         <span class="text-gray-500"> or drag and drop</span>
                     </label>
                     <p id="file-name" class="text-sm text-gray-500 mt-2">CSV file up to 10MB</p>
                 </div>
+                <!-- How to Get Your CSV -->
+                <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                    <h4 class="text-sm font-medium text-amber-800 mb-3 flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        How to Get Your CSV File
+                    </h4>
+                    <ol class="text-xs text-amber-700 space-y-2 list-decimal list-inside">
+                        <li class="leading-relaxed">
+                            <span class="font-medium">Download PDF statement</span> from your bank's website or mobile app
+                        </li>
+                        <li class="leading-relaxed">
+                            <span class="font-medium">Convert PDF to CSV</span> using our
+                            <a href="/pdf-converter" class="text-primary-600 hover:text-primary-700 underline font-medium">PDF Converter</a>
+                            - select your bank and upload the PDF
+                        </li>
+                        <li class="leading-relaxed">
+                            <span class="font-medium">Upload the generated CSV</span> here to import your transactions
+                        </li>
+                    </ol>
+                </div>
+
+                <!-- Supported Formats -->
                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <h4 class="text-sm font-medium text-blue-800 mb-2">Supported Formats</h4>
+                    <h4 class="text-sm font-medium text-blue-800 mb-2">Supported CSV Formats</h4>
                     <ul class="text-xs text-blue-700 space-y-1">
                         <li>Columns: Date, Description, Debit/Credit or Amount</li>
-                        <li>Nigerian bank statement formats (GTBank, UBA, Access, etc.)</li>
+                        <li>Nigerian bank statement formats (GTBank, Zenith, UBA, Access, etc.)</li>
                         <li>Transactions will be auto-categorized</li>
                     </ul>
                 </div>
@@ -439,8 +514,8 @@
                         class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
                     Cancel
                 </button>
-                <button type="submit" id="upload-btn"
-                        class="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+                <button type="submit" id="upload-btn" disabled
+                        class="flex-1 px-4 py-2 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed">
                     Upload & Import
                 </button>
             </div>
@@ -576,11 +651,41 @@
         }
     }
 
+    // Asset registration toggle functions
+    function toggleAssetFields() {
+        const category = document.getElementById('txn-category').value;
+        const container = document.getElementById('asset-toggle-container');
+
+        // Show asset toggle only for Capital Expenses
+        if (category === 'Capital Expenses') {
+            container.classList.remove('hidden');
+        } else {
+            container.classList.add('hidden');
+            document.getElementById('txn-register-asset').checked = false;
+            toggleAssetNameField(false);
+        }
+    }
+
+    function toggleAssetNameField(show) {
+        const container = document.getElementById('asset-name-container');
+        const input = document.getElementById('txn-asset-name');
+        if (show) {
+            container.classList.remove('hidden');
+            input.required = true;
+        } else {
+            container.classList.add('hidden');
+            input.required = false;
+            input.value = '';
+        }
+    }
+
     // Add Transaction Modal
     function openAddTransactionModal() {
         const modal = document.getElementById('add-transaction-modal');
         modal.classList.remove('hidden');
         modal.classList.add('flex');
+        // Check if Capital Expenses is selected by default
+        toggleAssetFields();
     }
 
     function closeAddTransactionModal() {
@@ -589,10 +694,22 @@
         modal.classList.remove('flex');
         document.getElementById('add-transaction-form').reset();
         document.getElementById('txn-date').value = new Date().toISOString().split('T')[0];
+        // Reset asset fields
+        document.getElementById('asset-toggle-container').classList.add('hidden');
+        document.getElementById('asset-name-container').classList.add('hidden');
     }
 
     async function submitAddTransaction(event) {
         event.preventDefault();
+
+        const registerAsAsset = document.getElementById('txn-register-asset').checked;
+        const assetName = document.getElementById('txn-asset-name').value;
+
+        // Validate asset name if registering as asset
+        if (registerAsAsset && !assetName) {
+            alert('Please enter an asset name');
+            return;
+        }
 
         const data = {
             company_id: companyId,
@@ -604,6 +721,8 @@
             bank: document.getElementById('txn-bank').value || null,
             has_receipt: document.getElementById('txn-has-receipt').checked,
             notes: document.getElementById('txn-notes').value || null,
+            register_as_asset: registerAsAsset,
+            asset_name: assetName || null,
         };
 
         try {
@@ -624,8 +743,37 @@
         }
     }
 
+    // Edit Transaction Modal - Asset toggle functions
+    function toggleEditAssetFields() {
+        const category = document.getElementById('edit-txn-category').value;
+        const toggleContainer = document.getElementById('edit-asset-toggle-container');
+        const existingAssetContainer = document.getElementById('edit-existing-asset-container');
+
+        // Only show asset toggle for Capital Expenses and if no existing asset
+        if (category === 'Capital Expenses' && existingAssetContainer.classList.contains('hidden')) {
+            toggleContainer.classList.remove('hidden');
+        } else {
+            toggleContainer.classList.add('hidden');
+            document.getElementById('edit-txn-register-asset').checked = false;
+            toggleEditAssetNameField(false);
+        }
+    }
+
+    function toggleEditAssetNameField(show) {
+        const container = document.getElementById('edit-asset-name-container');
+        const input = document.getElementById('edit-txn-asset-name');
+        if (show) {
+            container.classList.remove('hidden');
+            input.required = true;
+        } else {
+            container.classList.add('hidden');
+            input.required = false;
+            input.value = '';
+        }
+    }
+
     // Edit Transaction Modal
-    function openEditTransactionModal(id, date, description, amount, vendorClient, category, bank, hasReceipt, notes) {
+    async function openEditTransactionModal(id, date, description, amount, vendorClient, category, bank, hasReceipt, notes) {
         document.getElementById('edit-txn-id').value = id;
         document.getElementById('edit-txn-date').value = date;
         document.getElementById('edit-txn-description').value = description;
@@ -635,6 +783,37 @@
         document.getElementById('edit-txn-bank').value = bank;
         document.getElementById('edit-txn-has-receipt').checked = hasReceipt;
         document.getElementById('edit-txn-notes').value = notes;
+
+        // Reset asset-related fields
+        document.getElementById('edit-asset-toggle-container').classList.add('hidden');
+        document.getElementById('edit-asset-name-container').classList.add('hidden');
+        document.getElementById('edit-existing-asset-container').classList.add('hidden');
+        document.getElementById('edit-txn-register-asset').checked = false;
+        document.getElementById('edit-txn-asset-name').value = '';
+
+        // Check if transaction has a linked asset
+        try {
+            const response = await fetch(`/transactions/api/${id}/asset`);
+            if (response.ok) {
+                const asset = await response.json();
+                if (asset) {
+                    // Show existing asset info
+                    document.getElementById('edit-existing-asset-name').textContent = asset.name;
+                    document.getElementById('edit-existing-asset-container').classList.remove('hidden');
+                } else if (category === 'Capital Expenses') {
+                    // No asset, show register option for Capital Expenses
+                    document.getElementById('edit-asset-toggle-container').classList.remove('hidden');
+                }
+            } else if (category === 'Capital Expenses') {
+                // Error or no asset endpoint, show register option for Capital Expenses
+                document.getElementById('edit-asset-toggle-container').classList.remove('hidden');
+            }
+        } catch (error) {
+            // If fetch fails, still show asset toggle for Capital Expenses
+            if (category === 'Capital Expenses') {
+                document.getElementById('edit-asset-toggle-container').classList.remove('hidden');
+            }
+        }
 
         const modal = document.getElementById('edit-transaction-modal');
         modal.classList.remove('hidden');
@@ -646,21 +825,36 @@
         modal.classList.add('hidden');
         modal.classList.remove('flex');
         document.getElementById('edit-transaction-form').reset();
+        // Reset asset fields
+        document.getElementById('edit-asset-toggle-container').classList.add('hidden');
+        document.getElementById('edit-asset-name-container').classList.add('hidden');
+        document.getElementById('edit-existing-asset-container').classList.add('hidden');
     }
 
     async function submitEditTransaction(event) {
         event.preventDefault();
         const transactionId = document.getElementById('edit-txn-id').value;
 
+        const registerAsAsset = document.getElementById('edit-txn-register-asset').checked;
+        const assetName = document.getElementById('edit-txn-asset-name').value;
+
+        // Validate asset name if registering as asset
+        if (registerAsAsset && !assetName) {
+            alert('Please enter an asset name');
+            return;
+        }
+
         const data = {
             date: document.getElementById('edit-txn-date').value,
             description: document.getElementById('edit-txn-description').value,
             amount: parseFloat(document.getElementById('edit-txn-amount').value),
             vendor_client: document.getElementById('edit-txn-vendor-client').value || null,
-            category: document.getElementById('edit-txn-category').value,
+            category: document.getElementById('edit-txn-category').value || null,
             bank: document.getElementById('edit-txn-bank').value || null,
             has_receipt: document.getElementById('edit-txn-has-receipt').checked,
             notes: document.getElementById('edit-txn-notes').value || null,
+            register_as_asset: registerAsAsset,
+            asset_name: assetName || null,
         };
 
         try {
@@ -721,6 +915,7 @@
         const modal = document.getElementById('upload-modal');
         modal.classList.remove('hidden');
         modal.classList.add('flex');
+        validateUploadForm(); // Ensure button state is correct on open
     }
 
     function closeUploadModal() {
@@ -729,6 +924,25 @@
         modal.classList.remove('flex');
         document.getElementById('upload-form').reset();
         document.getElementById('file-name').textContent = 'CSV file up to 10MB';
+        // Reset button to disabled state
+        const btn = document.getElementById('upload-btn');
+        btn.disabled = true;
+        btn.className = 'flex-1 px-4 py-2 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed transition-colors';
+        btn.textContent = 'Upload & Import';
+    }
+
+    function validateUploadForm() {
+        const bank = document.getElementById('upload-bank').value;
+        const file = document.getElementById('csv-file').files[0];
+        const btn = document.getElementById('upload-btn');
+
+        if (bank && file) {
+            btn.disabled = false;
+            btn.className = 'flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors';
+        } else {
+            btn.disabled = true;
+            btn.className = 'flex-1 px-4 py-2 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed transition-colors';
+        }
     }
 
     function updateFileName(input) {

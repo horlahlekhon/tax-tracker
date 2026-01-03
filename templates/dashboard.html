@@ -196,19 +196,39 @@
                             <p class="text-xs text-yellow-600 mt-1">Approaching VAT registration threshold</p>
                         {% endif %}
                     </div>
-                    <!-- Small Company Threshold -->
+                    <!-- Small Company Revenue Threshold -->
                     <div>
                         <div class="flex justify-between items-center mb-2">
-                            <span class="text-gray-600">Small Company Limit (₦50M)</span>
+                            <span class="text-gray-600">Revenue Limit (₦25M)</span>
                             <span class="text-sm text-gray-500">{{ summary.small_company_threshold_percent }}%</span>
                         </div>
                         <div class="w-full bg-gray-200 rounded-full h-3">
                             <div class="bg-green-500 h-3 rounded-full transition-all duration-500" style="width: {{ [summary.small_company_threshold_percent, 100]|min }}%"></div>
                         </div>
                         {% if summary.small_company_threshold_percent >= 80 and summary.company_size.value == 'Small' %}
-                            <p class="text-xs text-yellow-600 mt-1">Approaching 20% CIT bracket</p>
+                            <p class="text-xs text-yellow-600 mt-1">Approaching revenue limit for 0% CIT</p>
                         {% endif %}
                     </div>
+                    <!-- Asset Threshold -->
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-gray-600">Asset Limit (₦250M)</span>
+                            <span class="text-sm {% if summary.asset_threshold_percent >= 80 %}text-yellow-600 font-semibold{% else %}text-gray-500{% endif %}">{{ summary.asset_threshold_percent }}%</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-3">
+                            <div class="h-3 rounded-full transition-all duration-500 {% if summary.asset_threshold_percent >= 100 %}bg-red-500{% elif summary.asset_threshold_percent >= 80 %}bg-yellow-500{% else %}bg-purple-500{% endif %}" style="width: {{ [summary.asset_threshold_percent, 100]|min }}%"></div>
+                        </div>
+                        {% if summary.asset_threshold_percent >= 100 %}
+                            <p class="text-xs text-red-600 mt-1">Asset threshold exceeded - no longer qualifies as Small company</p>
+                        {% elif summary.asset_threshold_percent >= 80 %}
+                            <p class="text-xs text-yellow-600 mt-1">Approaching asset limit - may affect CIT rate</p>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="mt-4 pt-4 border-t border-gray-200">
+                    <p class="text-xs text-gray-500">
+                        <strong>Small Company (0% CIT):</strong> Revenue ≤ ₦25M <strong>AND</strong> Assets ≤ ₦250M
+                    </p>
                 </div>
             </div>
         </div>
@@ -316,6 +336,13 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
                 </svg>
                 View Transactions
+            </a>
+            <a href="/assets?company_id={{ company.id }}"
+               class="inline-flex items-center px-4 py-2 bg-white text-gray-700 rounded-lg hover:bg-gray-100 transition-colors shadow">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                </svg>
+                View Assets
             </a>
             <a href="/calculator?company_id={{ company.id }}"
                class="inline-flex items-center px-4 py-2 bg-white text-gray-700 rounded-lg hover:bg-gray-100 transition-colors shadow">

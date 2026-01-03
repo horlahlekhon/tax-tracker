@@ -20,6 +20,7 @@ from utils.storage import (
     get_transactions_ytd,
     get_checklist,
     create_or_update_checklist,
+    get_total_assets_value,
 )
 from utils.tax_calculator import (
     calculate_tax_summary,
@@ -86,7 +87,13 @@ async def get_dashboard_data(
     # For threshold calculations, use YTD revenue
     year = int(month.split("-")[0])
     ytd_txns = get_transactions_ytd(company_id, year)
-    ytd_summary = calculate_tax_summary(ytd_txns, period_type="ytd")
+
+    # Get total assets for threshold calculation
+    total_assets = get_total_assets_value(company_id)
+
+    ytd_summary = calculate_tax_summary(
+        ytd_txns, period_type="ytd", total_assets=total_assets
+    )
     annual_revenue = ytd_summary.total_revenue
 
     # Calculate summary for selected period
@@ -94,6 +101,7 @@ async def get_dashboard_data(
         txns,
         period_type=period,
         annual_revenue_override=annual_revenue,
+        total_assets=total_assets,
     )
 
     return summary
@@ -207,7 +215,10 @@ async def get_ytd_summary(
         year = datetime.now().year
 
     transactions = get_transactions_ytd(company_id, year)
-    summary = calculate_tax_summary(transactions, period_type="ytd")
+    total_assets = get_total_assets_value(company_id)
+    summary = calculate_tax_summary(
+        transactions, period_type="ytd", total_assets=total_assets
+    )
 
     return summary
 
@@ -312,7 +323,10 @@ async def download_balance_sheet_pdf(
     # Get YTD revenue for threshold calculations
     year = int(month.split("-")[0])
     ytd_txns = get_transactions_ytd(company_id, year)
-    ytd_summary = calculate_tax_summary(ytd_txns, period_type="ytd")
+    total_assets = get_total_assets_value(company_id)
+    ytd_summary = calculate_tax_summary(
+        ytd_txns, period_type="ytd", total_assets=total_assets
+    )
     annual_revenue = ytd_summary.total_revenue
 
     # Calculate tax summary for the month
@@ -320,6 +334,7 @@ async def download_balance_sheet_pdf(
         transactions,
         period_type="month",
         annual_revenue_override=annual_revenue,
+        total_assets=total_assets,
     )
 
     # Get filing checklist
@@ -447,7 +462,10 @@ async def export_cit_summary_csv(
         year = datetime.now().year
 
     transactions = get_transactions_ytd(company_id, year)
-    summary = calculate_tax_summary(transactions, period_type="ytd")
+    total_assets = get_total_assets_value(company_id)
+    summary = calculate_tax_summary(
+        transactions, period_type="ytd", total_assets=total_assets
+    )
     csv_content = generate_cit_summary_csv(transactions, summary, company.name, year)
     filename = get_export_filename(company.name, "cit-summary", year=year)
 

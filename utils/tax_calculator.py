@@ -18,7 +18,8 @@ from models import (
 
 # Nigerian Tax Thresholds (in Naira)
 VAT_THRESHOLD = Decimal("25000000")  # ₦25 million
-SMALL_COMPANY_THRESHOLD = Decimal("50000000")  # ₦50 million
+SMALL_COMPANY_REVENUE_THRESHOLD = Decimal("25000000")  # ₦25 million
+SMALL_COMPANY_ASSET_THRESHOLD = Decimal("250000000")  # ₦250 million
 MEDIUM_COMPANY_THRESHOLD = Decimal("100000000")  # ₦100 million
 
 # Tax Rates
@@ -35,15 +36,20 @@ def round_naira(amount: Decimal) -> Decimal:
     return amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
-def determine_company_size(annual_revenue: Decimal) -> CompanySize:
-    """Determine company size based on annual revenue.
+def determine_company_size(
+    annual_revenue: Decimal,
+    total_assets: Decimal = Decimal("0"),
+) -> CompanySize:
+    """Determine company size based on annual revenue AND total assets.
 
-    Nigerian CIT tiers:
-    - Small: Revenue ≤ ₦50,000,000
-    - Medium: Revenue ₦50,000,001 - ₦100,000,000
-    - Large: Revenue > ₦100,000,000
+    Nigerian CIT tiers (Updated):
+    - Small: Revenue ≤ ₦25,000,000 AND Assets ≤ ₦250,000,000 (0% CIT)
+    - Medium: Revenue ₦25,000,001 - ₦100,000,000 or exceeds asset threshold (20% CIT)
+    - Large: Revenue > ₦100,000,000 (30% CIT)
     """
-    if annual_revenue <= SMALL_COMPANY_THRESHOLD:
+    # Small company requires BOTH conditions to be met
+    if (annual_revenue <= SMALL_COMPANY_REVENUE_THRESHOLD and
+            total_assets <= SMALL_COMPANY_ASSET_THRESHOLD):
         return CompanySize.SMALL
     elif annual_revenue <= MEDIUM_COMPANY_THRESHOLD:
         return CompanySize.MEDIUM
@@ -162,6 +168,7 @@ def calculate_tax_summary(
     transactions: list[Transaction],
     period_type: str = "month",
     annual_revenue_override: Optional[Decimal] = None,
+    total_assets: Decimal = Decimal("0"),
 ) -> TaxSummary:
     """Calculate complete tax summary from transactions.
 
@@ -169,6 +176,7 @@ def calculate_tax_summary(
         transactions: List of transactions for the period
         period_type: "month" or "ytd" (year-to-date)
         annual_revenue_override: Override for annual revenue (for threshold calculations)
+        total_assets: Total asset value for company size determination
 
     Returns:
         TaxSummary with all calculations
@@ -194,8 +202,8 @@ def calculate_tax_summary(
     # If monthly, we might need to annualize or use override
     revenue_for_thresholds = annual_revenue_override or total_revenue
 
-    # Determine company size based on revenue
-    company_size = determine_company_size(revenue_for_thresholds)
+    # Determine company size based on revenue AND assets
+    company_size = determine_company_size(revenue_for_thresholds, total_assets)
 
     # Calculate CIT
     cit_rate = get_cit_rate(company_size)
@@ -214,7 +222,8 @@ def calculate_tax_summary(
 
     # Threshold progress percentages
     vat_threshold_percent = int(min((revenue_for_thresholds / VAT_THRESHOLD * 100), 100))
-    small_company_threshold_percent = int(min((revenue_for_thresholds / SMALL_COMPANY_THRESHOLD * 100), 100))
+    small_company_threshold_percent = int(min((revenue_for_thresholds / SMALL_COMPANY_REVENUE_THRESHOLD * 100), 100))
+    asset_threshold_percent = int(min((total_assets / SMALL_COMPANY_ASSET_THRESHOLD * 100), 100))
 
     return TaxSummary(
         total_revenue=round_naira(total_revenue),
@@ -233,6 +242,8 @@ def calculate_tax_summary(
         receipt_percentage=receipt_percentage,
         vat_threshold_percent=vat_threshold_percent,
         small_company_threshold_percent=small_company_threshold_percent,
+        total_assets=total_assets,
+        asset_threshold_percent=asset_threshold_percent,
     )
 
 
