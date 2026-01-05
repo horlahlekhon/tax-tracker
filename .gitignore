@@ -90,3 +90,4 @@ token.pickle
 *.temp
 .tmp/
 .temp/
+data/*.json
